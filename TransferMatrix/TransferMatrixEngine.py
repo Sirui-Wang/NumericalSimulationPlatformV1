@@ -179,12 +179,9 @@ def InitializeSubMatrixes(branches_dict, G):
 def TMCalculation(data_pack):
     freq, branches_dict, sub_matrixes = data_pack
     juncs = list(sub_matrixes.keys())
-    if len(juncs) == 1 and juncs[0] == "series":
-        A = sub_matrixes["series"]["aa"]
-    else:
-        A = sub_matrixes[juncs[0]]["aa"]
-        for junc in juncs[1::]:
-            A = scipy.linalg.block_diag(A, sub_matrixes[junc]["aa"])
+    A = sub_matrixes[juncs[0]]["aa"]
+    for junc in juncs[1::]:
+        A = scipy.linalg.block_diag(A, sub_matrixes[junc]["aa"])
     A = np.array(A, dtype=complex)
     B = np.zeros((len(A), 1), dtype=complex)
     global IndexMap
@@ -537,7 +534,7 @@ def main(Graph, Envir, progress_bar, ProgressPage):
             CalculateAtSensor(Solutions, i, freq)
             CalculateAllNode(Solutions, i)
     else:
-        freq = np.array([Envir["ExcitationFreq"]])
+        freq = np.array([float(Envir["ExcitationFreq"])])
         data = (freq, branches_dict, sub_matrixes)
         Solutions = TMCalculation(data)
         progress_bar["value"] += 100
@@ -548,18 +545,18 @@ def main(Graph, Envir, progress_bar, ProgressPage):
     SaveDict = {}
     for edge in G.edges:
         source, target = edge
-        SensorHfreq = abs(result_dict[edge]["hfreq"])
-        SensorQfreq = abs(result_dict[edge]["qfreq"])
-        SourceHfreq = abs(all_result_dict[edge]["source"]["hfreq"])
-        SourceQfreq = abs(all_result_dict[edge]["source"]["qfreq"])
-        TargetHfreq = abs(all_result_dict[edge]["target"]["hfreq"])
-        TargetQfreq = abs(all_result_dict[edge]["target"]["qfreq"])
-        SensorHTime = np.real(np.fft.fft(SensorHfreq, len(SensorHfreq))) / (len(freq_range) / 2)
-        SensorQTime = np.real(np.fft.fft(SensorQfreq, len(SensorQfreq))) / (len(freq_range) / 2)
-        SourceHTime = np.real(np.fft.fft(SourceHfreq, len(SourceHfreq))) / (len(freq_range) / 2)
-        SourceQTime = np.real(np.fft.fft(SourceQfreq, len(SourceQfreq))) / (len(freq_range) / 2)
-        TargetHTime = np.real(np.fft.fft(TargetHfreq, len(TargetHfreq))) / (len(freq_range) / 2)
-        TargetQTime = np.real(np.fft.fft(TargetQfreq, len(TargetQfreq))) / (len(freq_range) / 2)
+        SensorHfreq = result_dict[edge]["hfreq"]
+        SensorQfreq = result_dict[edge]["qfreq"]
+        SourceHfreq = all_result_dict[edge]["source"]["hfreq"]
+        SourceQfreq = all_result_dict[edge]["source"]["qfreq"]
+        TargetHfreq = all_result_dict[edge]["target"]["hfreq"]
+        TargetQfreq = all_result_dict[edge]["target"]["qfreq"]
+        SensorHTime = np.real(np.fft.ifft(SensorHfreq, len(SensorHfreq)))
+        SensorQTime = np.real(np.fft.ifft(SensorQfreq, len(SensorQfreq)))
+        SourceHTime = np.real(np.fft.ifft(SourceHfreq, len(SourceHfreq)))
+        SourceQTime = np.real(np.fft.ifft(SourceQfreq, len(SourceQfreq)))
+        TargetHTime = np.real(np.fft.ifft(TargetHfreq, len(TargetHfreq)))
+        TargetQTime = np.real(np.fft.ifft(TargetQfreq, len(TargetQfreq)))
         time_name = "Pipe {0}-{1} Time".format(source, target)
         freq_name = "Pipe {0}-{1} Freq".format(source, target)
         timeHeading = np.array(
@@ -570,7 +567,7 @@ def main(Graph, Envir, progress_bar, ProgressPage):
              "Head Target({})".format(target), "Flow Target({})".format(target)])
         SaveTime = np.column_stack((time, SourceHTime, SourceQTime, SensorHTime, SensorQTime, TargetHTime, TargetQTime))
         SaveFreq = np.column_stack(
-            (freq_range, SourceHfreq, SourceQfreq, SensorHfreq, SensorQfreq, TargetHfreq, TargetQfreq))
+            (freq_range, abs(SourceHfreq), abs(SourceQfreq), abs(SensorHfreq), abs(SensorQfreq), abs(TargetHfreq), abs(TargetQfreq)))
         SaveTime = np.row_stack((timeHeading, SaveTime))
         SaveFreq = np.row_stack((freqHeading, SaveFreq))
         SaveDict[time_name] = SaveTime.tolist()

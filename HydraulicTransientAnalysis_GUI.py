@@ -160,10 +160,11 @@ def startAnalysis():
     """pass all information to a interface between the GUI and engine to start transient analysis"""
     saveConfig()
     global Progresses
-    Progresses = Toplevel()
-    Progresses.title("Progresses")
+    Progresses = LabelFrame(RightFrame, text="Progress", height=20)
+    # Progresses.title("Progresses")
     my_progress = ttk.Progressbar(Progresses, orient=HORIZONTAL, length=400, mode="determinate")
     my_progress.pack(fill=BOTH, expand=1)
+    Progresses.pack(fill=BOTH)
     compacted_data = {"Nodes": NodesDictionary, "Links": LinksDictionary, "Environment": EnvirDictionary,
                       "Mode": AnalysisMode.get()}
     Interface.main(compacted_data, my_progress, Progresses)

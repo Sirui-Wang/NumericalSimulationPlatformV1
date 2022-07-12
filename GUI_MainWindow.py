@@ -67,7 +67,6 @@ def OpenFile():
     AnalysisMode.set(recovered_dict["Mode"])
     Refresh_display()
     if not recovered_dict["Mode"]:
-        global timestepEntry, runtimeEntry
         timestepEntry.delete(0, END)
         timestepEntry.insert(END, EnvirDictionary["dt"])
         runtimeEntry.delete(0, END)
@@ -77,16 +76,21 @@ def OpenFile():
         record_endEntry.delete(0, END)
         record_endEntry.insert(END, EnvirDictionary["RecordEnd"])
     else:
-        Refresh_Panel()
+        global frequencyModeVar
         frequencyModeVar.set(EnvirDictionary["FreqMode"])
+        Refresh_Panel()
         if EnvirDictionary["FreqMode"] == "MultiFrequency":
-            freqStepEntry.delete(0, END)
-            freqStepEntry.insert(END, EnvirDictionary["df"])
-            FreqRangeEntry.delete(0, END)
-            FreqRangeEntry.insert(END, EnvirDictionary["MaxFreq"])
+            MultifreqStepEntry.delete(0, END)
+            MultifreqStepEntry.insert(END, EnvirDictionary["df"])
+            MultiFreqRangeEntry.delete(0, END)
+            MultiFreqRangeEntry.insert(END, EnvirDictionary["MaxFreq"])
         else:
             FreqEntry.delete(0, END)
             FreqEntry.insert(END, EnvirDictionary["ExcitationFreq"])
+            SinglefreqStepEntry.delete(0, END)
+            SinglefreqStepEntry.insert(END, EnvirDictionary["df"])
+            SingleFreqRangeEntry.delete(0, END)
+            SingleFreqRangeEntry.insert(END, EnvirDictionary["MaxFreq"])
 
 
 
@@ -134,24 +138,19 @@ def ChangeMode(Warning=True,*args):
 
 
 
-def Refresh_Link_Window(*args):
-    """
-    This function is used to refresh link pop up window on changing transient analysis mode as well as other parameters such as HasPerturbation, HasSensor, etc
-    :param args:
-    :return:
-    """
-    pass
-
 
 def saveConfig():
     """Save Run configuration to dictionary for later use or overall file save"""
     global EnvirDictionary
     if AnalysisMode.get():
         if frequencyModeVar.get() == "MultiFrequency":
-            EnvirDictionary = {"df": freqStepEntry.get(), "MaxFreq": FreqRangeEntry.get(),
+            EnvirDictionary = {}
+            EnvirDictionary = {"df": MultifreqStepEntry.get(), "MaxFreq": MultiFreqRangeEntry.get(),
                                "FreqMode": frequencyModeVar.get()}
         else:
-            EnvirDictionary = {"ExcitationFreq": FreqEntry.get(), "FreqMode": frequencyModeVar.get()}
+            EnvirDictionary = {}
+            EnvirDictionary = {"ExcitationFreq": FreqEntry.get(), "df": SinglefreqStepEntry.get(),
+                               "MaxFreq": SingleFreqRangeEntry.get(), "FreqMode": frequencyModeVar.get()}
     else:
         EnvirDictionary = {"dt": timestepEntry.get(), "TotalTime": runtimeEntry.get(),
                            "RecordStart": record_startEntry.get(), "RecordEnd": record_endEntry.get()}
@@ -520,7 +519,7 @@ def TM_perturbation_field(passed):
 
 
 def TM_sensor_field(displayWindow, key="New"):
-    global SensorFrame, SensorLocation
+    global SensorFrame, SensorLocation, SensorDist
     if key=="New":
         try:
             SensorFrame.destroy()
@@ -530,6 +529,9 @@ def TM_sensor_field(displayWindow, key="New"):
         Label(SensorFrame, text="Sensor Location").grid(row=0, column=0, sticky="w")  # Sensor location label
         SensorLocation = Entry(SensorFrame)
         SensorLocation.grid(row=0, column=1, sticky="e")
+        Label(SensorFrame, text="Distance to boundary").grid(row=1, column=0, sticky="w")
+        SensorDist = Entry(SensorFrame)
+        SensorDist.grid(row=1, column=1, sticky="e")
         if SensorVar.get():
             SensorFrame.grid(row=15, sticky="ew")
             SensorFrame.grid_columnconfigure(0, weight=1)
@@ -538,9 +540,13 @@ def TM_sensor_field(displayWindow, key="New"):
     else:
         SensorFrame = LabelFrame(displayWindow, highlightthickness=0)
         Label(SensorFrame, text="Sensor Location").grid(row=0, column=0, sticky="w")  # Sensor location label
+        Label(SensorFrame, text="Distance to boundary").grid(row=1, column=0, sticky="w")
         SensorLocation = Entry(SensorFrame)
         SensorLocation.insert(0, LinksDictionary[key]["SensorLocation"])
+        SensorDist = Entry(SensorFrame)
+        SensorDist.insert(0, LinksDictionary[key]["SensorDist"])
         SensorLocation.grid(row=0, column=1, sticky="e")
+        SensorDist.grid(row=1, column=1, sticky="e")
         SensorFrame.grid(row=15, sticky="ew")
         SensorFrame.grid_columnconfigure(0, weight=1)
 
@@ -635,7 +641,7 @@ def drawLink():
                 {"PertType": ""})
         if SensorVar.get():
             LinksDictionary["{},{}".format(start, end)].update(
-                {"HasSensor": SensorVar.get(), "SensorLocation": SensorLocation.get()})
+                {"HasSensor": SensorVar.get(), "SensorLocation": SensorLocation.get(), "SensorDist": SensorDist.get()})
         else:
             LinksDictionary["{},{}".format(start, end)].update({"HasSensor": ""})
     x = (x0 + x1) / 2
@@ -696,9 +702,9 @@ def saveLinkEdit(key):
                 {"PertType": ""})
         if SensorVar.get():
             LinksDictionary["{},{}".format(start, end)].update(
-                {"HasSensor": SensorVar.get(), "SensorLocation": SensorLocation.get()})
+                {"HasSensor": SensorVar.get(), "SensorLocation": SensorLocation.get(), "SensorDist": SensorDist.get()})
         else:
-            LinksDictionary["{},{}".format(start, end)].update({"HasSensor": "", "SensorLocation":""})
+            LinksDictionary["{},{}".format(start, end)].update({"HasSensor": ""})
     drawArea.delete(key)
     drawArea.delete(key + "text")
     start, end = key.split(",")
@@ -945,16 +951,22 @@ SelectionFrame.grid(row=1, column=0, columnspan=4, padx=20, sticky="ew")
 MultiFrame = LabelFrame(TMFrame, borderwidth=0, highlightthickness=0)
 Label(MultiFrame, text="dfreq = ", anchor="e").grid(row=0, column=0, pady=10, sticky="W")
 Label(MultiFrame, text="Max Freq").grid(row=1, column=0, pady=10, sticky="W")
-freqStepEntry = Entry(MultiFrame, width=40)
-freqStepEntry.grid(row=0, column=1, pady=10, padx=10, columnspan=2, sticky="WE")
-FreqRangeEntry = Entry(MultiFrame, width=40)
-FreqRangeEntry.grid(row=1, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
+MultifreqStepEntry = Entry(MultiFrame, width=40)
+MultifreqStepEntry.grid(row=0, column=1, pady=10, padx=10, columnspan=2, sticky="WE")
+MultiFreqRangeEntry = Entry(MultiFrame, width=40)
+MultiFreqRangeEntry.grid(row=1, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
 
 # Create Frame for single frequency analysis
 SingleFrame = LabelFrame(TMFrame, borderwidth=0, highlightthickness=0)
 Label(SingleFrame, text="Excitation Frequency").grid(row=0, column=0, pady=10)
 FreqEntry = Entry(SingleFrame, width=30)
 FreqEntry.grid(row=0, column=1, pady=10, columnspan=2, padx=10, sticky="WE")
+Label(SingleFrame, text="dfreq = ", anchor="e").grid(row=1, column=0, pady=10, sticky="W")
+Label(SingleFrame, text="Max Freq").grid(row=2, column=0, pady=10, sticky="W")
+SinglefreqStepEntry = Entry(SingleFrame, width=40)
+SinglefreqStepEntry.grid(row=1, column=1, pady=10, padx=10, columnspan=2, sticky="WE")
+SingleFreqRangeEntry = Entry(SingleFrame, width=40)
+SingleFreqRangeEntry.grid(row=2, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
 frequencyModeVar.trace("w", Refresh_Panel)
 
 # TM save and start analysis

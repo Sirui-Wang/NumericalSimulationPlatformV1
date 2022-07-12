@@ -3,10 +3,11 @@ import os
 import tkinter
 from tkinter import *
 from tkinter import filedialog, ttk, messagebox
+
 import GUI_Engine_Interface as Interface
 
 # Auther: Sirui Wang
-# Updated date: 07/July/2022
+# Updated date: 13/July/2022
 """Module Comment"""
 # Line Comment
 
@@ -62,7 +63,8 @@ def OpenFile():
         x = (x0 + x1) / 2
         y = (y0 + y1) / 2
         drawArea.create_text(x, y + 30, text=l + "m", tag="{},{}".format(startNode, endNode) + "text")
-        edit_link_menu.add_command(label=("{},{}".format(startNode, endNode)), command=lambda e="{},{}".format(startNode, endNode): editLink(e))
+        edit_link_menu.add_command(label=("{},{}".format(startNode, endNode)),
+                                   command=lambda e="{},{}".format(startNode, endNode): editLink(e))
     AnalysisMode.set(recovered_dict["Mode"])
     Refresh_display()
     if not recovered_dict["Mode"]:
@@ -92,7 +94,6 @@ def OpenFile():
             SingleFreqRangeEntry.insert(END, EnvirDictionary["MaxFreq"])
 
 
-
 def SaveFile():
     """Save inputs as json file"""
     current_dir = os.getcwd()
@@ -116,6 +117,7 @@ def Refresh_Panel(*args):
     else:
         SingleFrame.grid(row=2, column=0, columnspan=4, sticky="ew", padx=20)
 
+
 def Refresh_display():
     MOCFrame.pack_forget()
     TMFrame.pack_forget()
@@ -125,17 +127,16 @@ def Refresh_display():
     else:
         MOCFrame.pack(fill=BOTH, expand=1)
 
-def ChangeMode(Warning=True,*args):
+
+def ChangeMode(Warning=True, *args):
     """
     This function is used to refresh main panel display on changing transient analysis mode
     switching between input field for MOC modelling and Transfer matrix modelling
     :return:
     """
-    Answer = clear(Warning,flip=True)
+    Answer = clear(Warning, flip=True)
     if Answer:
         Refresh_display()
-
-
 
 
 def saveConfig():
@@ -315,7 +316,7 @@ def link_MOC_property_field(displayWindow, key="New", HasPert=False):
         MOCPerturbationTypeVar.set("None")
         PertTypeList = ["None", "Impulse", "Full Closure", "Sinusoidal Head", "Sinusoidal Flow", "Controlled Flow"]
         PerturbationSelection = OptionMenu(MOCAdditionFrame, MOCPerturbationTypeVar, *PertTypeList,
-                                           command=lambda v: MOC_perturbation_field((displayWindow, v,"New")))
+                                           command=lambda v: MOC_perturbation_field((displayWindow, v, "New")))
         PerturbationSelection.grid(row=0, column=1, sticky="ew")
     else:
         MOCPerturbationTypeVar = StringVar()
@@ -324,16 +325,16 @@ def link_MOC_property_field(displayWindow, key="New", HasPert=False):
         passed = (displayWindow, LinksDictionary[key]["PertType"], key)
         MOC_perturbation_field(passed)
         PerturbationSelection = OptionMenu(MOCAdditionFrame, MOCPerturbationTypeVar, *PertTypeList,
-                                           command=lambda v: MOC_perturbation_field((displayWindow, v,"New")))
+                                           command=lambda v: MOC_perturbation_field((displayWindow, v, "New")))
         PerturbationSelection.grid(row=0, column=1, sticky="ew")
     MOCAdditionFrame.grid(row=2, sticky="nsew")
     MOCAdditionFrame.grid_columnconfigure(0, weight=1)
 
 
 def MOC_perturbation_field(passed):
-    displayWindow, PerturbationType, key= passed
+    displayWindow, PerturbationType, key = passed
     global PertFrame, Location, FlowRate, Frequency, Amplitude, StartTime
-    if key=="New":
+    if key == "New":
         try:
             PertFrame.destroy()
         except NameError:
@@ -390,7 +391,7 @@ def MOC_perturbation_field(passed):
         PertFrame = LabelFrame(displayWindow, text=PerturbationType, highlightthickness=0)
         Label(PertFrame, text="Location").grid(row=0, column=0, sticky="w")  # perturbation location label
         Location = Entry(PertFrame)
-        Location.insert(0,LinksDictionary[key]["Location"])
+        Location.insert(0, LinksDictionary[key]["Location"])
         Location.grid(row=0, column=1, sticky="e")
         if PerturbationType == "Impulse":
             ImpulseFrame = LabelFrame(PertFrame, highlightthickness=0, borderwidth=0)
@@ -406,7 +407,7 @@ def MOC_perturbation_field(passed):
             FCFrame = LabelFrame(PertFrame, highlightthickness=0, borderwidth=0)
             Label(FCFrame, text="Time").grid(row=0, column=0, sticky="w")  # impulse time
             StartTime = Entry(FCFrame)
-            StartTime.insert(0,LinksDictionary[key]["Time"])
+            StartTime.insert(0, LinksDictionary[key]["Time"])
             StartTime.grid(row=0, column=1, sticky="w")  # impulse time entry
             FCFrame.grid(row=1, column=0, columnspan=2, sticky="ew")
             FCFrame.grid_columnconfigure(0, weight=1)
@@ -420,7 +421,7 @@ def MOC_perturbation_field(passed):
             StartTime.grid(row=0, column=1, sticky="e")  # impulse time entry
             Label(CFFrame, text="Flow rate").grid(row=1, column=0, sticky="w")
             FlowRate = Entry(CFFrame)
-            FlowRate.insert(0,LinksDictionary[key]["FlowRate"])
+            FlowRate.insert(0, LinksDictionary[key]["FlowRate"])
             FlowRate.grid(row=1, column=1, sticky="e")
             CFFrame.grid(row=1, column=0, columnspan=2, sticky="ew")
             CFFrame.grid_columnconfigure(0, weight=1)
@@ -436,7 +437,7 @@ def MOC_perturbation_field(passed):
             Label(SineFrame, text="Frequency").grid(row=0, column=0, sticky="w")
             Label(SineFrame, text="Amplitude").grid(row=1, column=0, sticky="w")
             Frequency = Entry(SineFrame)
-            Frequency.insert(0,LinksDictionary[key]["Freq"])
+            Frequency.insert(0, LinksDictionary[key]["Freq"])
             Amplitude = Entry(SineFrame)
             Amplitude.insert(0, LinksDictionary[key]["Amp"])
             Frequency.grid(row=0, column=1, sticky="e")
@@ -447,7 +448,7 @@ def MOC_perturbation_field(passed):
             PertFrame.grid_columnconfigure(0, weight=1)
 
 
-def link_TM_property_field(displayWindow,key="New", HasPert=False, HasSensor=False):
+def link_TM_property_field(displayWindow, key="New", HasPert=False, HasSensor=False):
     global TMAdditionFrame
     TMAdditionFrame = LabelFrame(displayWindow, text="Additional Boundary Condition", highlightthickness=2)
     Label(TMAdditionFrame, text="Has perturbation").grid(row=0, column=0, sticky="w")
@@ -474,14 +475,14 @@ def link_TM_property_field(displayWindow,key="New", HasPert=False, HasSensor=Fal
         SensorVar = BooleanVar()
         SensorVar.set(False)
         SensorCheck = Checkbutton(TMAdditionFrame, variable=SensorVar,
-                                command=lambda: TM_sensor_field(displayWindow))
+                                  command=lambda: TM_sensor_field(displayWindow))
         SensorCheck.grid(row=2, column=1, sticky="ew")
     else:
         SensorVar = BooleanVar()
         SensorVar.set(HasSensor)
         TM_sensor_field(displayWindow, key)
         SensorCheck = Checkbutton(TMAdditionFrame, variable=SensorVar,
-                                command=lambda: TM_sensor_field(displayWindow))
+                                  command=lambda: TM_sensor_field(displayWindow))
         SensorCheck.grid(row=2, column=1, sticky="ew")
     TMAdditionFrame.grid(row=2, sticky="nsew")
     TMAdditionFrame.grid_columnconfigure(0, weight=1)
@@ -490,7 +491,7 @@ def link_TM_property_field(displayWindow,key="New", HasPert=False, HasSensor=Fal
 def TM_perturbation_field(passed):
     displayWindow, PerturbationType, key = passed
     global PertFrame, Location
-    if key=="New":
+    if key == "New":
         try:
             PertFrame.destroy()
         except NameError:
@@ -511,16 +512,15 @@ def TM_perturbation_field(passed):
         PertFrame = LabelFrame(displayWindow, text=PerturbationType, highlightthickness=0)
         Label(PertFrame, text="Location").grid(row=0, column=0, sticky="w")  # perturbation location label
         Location = Entry(PertFrame)
-        Location.insert(0,LinksDictionary[key]["Location"])
+        Location.insert(0, LinksDictionary[key]["Location"])
         Location.grid(row=0, column=1, sticky="e")
         PertFrame.grid(row=10, column=0, sticky="ew")
         PertFrame.grid_columnconfigure(0, weight=1)
 
 
-
 def TM_sensor_field(displayWindow, key="New"):
     global SensorFrame, SensorLocation, SensorDist
-    if key=="New":
+    if key == "New":
         try:
             SensorFrame.destroy()
         except NameError:
@@ -568,7 +568,7 @@ def link_Basic_property_field(displayWindow, key="New"):
     a = Entry(BasicFrame)
     f = Entry(BasicFrame)
     u = Entry(BasicFrame)
-    if key=="New":
+    if key == "New":
         pass
     else:
         l.insert(0, LinksDictionary[key]["Length"])
@@ -618,7 +618,8 @@ def drawLink():
     x0, y0 = NodesDictionary[start]["Coord"]
     x1, y1 = NodesDictionary[end]["Coord"]
     drawArea.create_line(x0, y0, x1, y1, tag="{},{}".format(start, end))
-    LinksDictionary["{},{}".format(start, end)] = {"Length": l.get(), "Diameter": d.get(), "Wave speed": a.get(), "Friction factor": f.get(), "Flow Velocity": u.get()}
+    LinksDictionary["{},{}".format(start, end)] = {"Length": l.get(), "Diameter": d.get(), "Wave speed": a.get(),
+                                                   "Friction factor": f.get(), "Flow Velocity": u.get()}
     if not AnalysisMode.get() and MOCPerturbationTypeVar.get() != "None":
         LinksDictionary["{},{}".format(start, end)].update(
             {"PertType": MOCPerturbationTypeVar.get(), "Location": Location.get()})
@@ -660,10 +661,10 @@ def editLink(key):
     start, end = key.split(",")
     Identificationlabel = Label(editLinkPage, text="Source Node = {}, Target Node = {}".format(start, end))
     Identificationlabel.grid(row=0, column=0, columnspan=2)
-    HasPert = LinksDictionary[key]["PertType"]!=""
+    HasPert = LinksDictionary[key]["PertType"] != ""
     link_Basic_property_field(editLinkPage, key)
     if AnalysisMode.get():
-        link_TM_property_field(editLinkPage,key=key, HasPert=HasPert, HasSensor=LinksDictionary[key]["HasSensor"])
+        link_TM_property_field(editLinkPage, key=key, HasPert=HasPert, HasSensor=LinksDictionary[key]["HasSensor"])
     else:
         link_MOC_property_field(editLinkPage, key=key, HasPert=HasPert)
 
@@ -674,7 +675,7 @@ def editLink(key):
 
 def saveLinkEdit(key):
     start, end = key.split(",")
-    LinksDictionary[key]={}
+    LinksDictionary[key] = {}
     LinksDictionary[key]["Length"] = l.get()
     LinksDictionary[key]["Diameter"] = d.get()
     LinksDictionary[key]["Wave speed"] = a.get()
@@ -739,6 +740,7 @@ def destroy_link(start, end):
     del LinksDictionary["{},{}".format(start, end)]
     delete_link.destroy()
 
+
 def ViewLink():
     LinkSummary = Toplevel()
     LinkSummary.title("Link Summaries")
@@ -775,38 +777,37 @@ def ViewLink():
 def ViewNode():
     NodeSummary = Toplevel()
     NodeSummary.title("Node Summaries")
-    #editLinkPage.resizable(0, 0)
+    # editLinkPage.resizable(0, 0)
     NodeSummary.geometry(f"+{root.winfo_x() + 200}+{root.winfo_y() + 200}")
     rowindex = 1
     columnindex = 1
-    PropertiesMatchingDict={}
-    nodesMatchingDict={}
+    PropertiesMatchingDict = {}
+    nodesMatchingDict = {}
     for node, properties in NodesDictionary.items():
         for property, value in properties.items():
             if not property in PropertiesMatchingDict.keys():
-                PropertiesMatchingDict[property]=columnindex
+                PropertiesMatchingDict[property] = columnindex
                 tempFrame = LabelFrame(NodeSummary, borderwidth=1, highlightthickness=1)
                 tempFrame.grid(row=0, column=PropertiesMatchingDict[property], sticky="nsew")
                 Label(tempFrame, text=property).pack()
                 columnindex += 1
         if not node in nodesMatchingDict.keys():
-            nodesMatchingDict[node]=rowindex
+            nodesMatchingDict[node] = rowindex
             nodeFrame = LabelFrame(NodeSummary, borderwidth=1, highlightthickness=1)
-            nodeFrame.grid(row = nodesMatchingDict[node], column=0, sticky="nsew")
+            nodeFrame.grid(row=nodesMatchingDict[node], column=0, sticky="nsew")
             Label(nodeFrame, text=node).pack()
-            rowindex+=1
+            rowindex += 1
     for node, properties in NodesDictionary.items():
         for property, value in properties.items():
             row = nodesMatchingDict[node]
-            column=PropertiesMatchingDict[property]
-            valueFrame = LabelFrame(NodeSummary,borderwidth=1, highlightthickness=1)
+            column = PropertiesMatchingDict[property]
+            valueFrame = LabelFrame(NodeSummary, borderwidth=1, highlightthickness=1)
             valueFrame.grid(row=row, column=column, sticky="nsew")
             Label(valueFrame, text=value).pack()
     NodeSummary.grid_columnconfigure(0, weight=1)
 
 
-
-def clear(Warning=True,flip=False):
+def clear(Warning=True, flip=False):
     global NodesDictionary, LinksDictionary, EnvirDictionary
     if Warning:
         if messagebox.askyesno("Warning", message="Contiune will delete everything !"):

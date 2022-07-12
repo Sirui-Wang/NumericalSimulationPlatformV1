@@ -1,8 +1,15 @@
 import json
+
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
+# Auther: Sirui Wang
+# Updated date: 13/July/2022
+"""Module Comment"""
+
+
+# Line Comment
 
 class InconsistantInputFile(Exception):
     pass

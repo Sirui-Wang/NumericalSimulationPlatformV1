@@ -1,8 +1,12 @@
 import networkx as nx
-import TransferMatrix.TransferMatrixEngine as TMEngine
-import MOC.MOCEngine as MOCEngine
-import copy
 
+import MOC.MOCEngine as MOCEngine
+import TransferMatrix.TransferMatrixEngine as TMEngine
+
+# Auther: Sirui Wang
+# Updated date: 13/July/2022
+"""Module Comment"""
+# Line Comment
 global G
 G = nx.DiGraph()
 

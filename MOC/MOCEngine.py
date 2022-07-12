@@ -1,12 +1,20 @@
 import copy
 import json
-import numpy as np
 import os
 from tkinter import filedialog, messagebox
-from tqdm import tqdm
-import MOC.CalculateSteadyState as toSteadyState
-import pyexcel
 
+import numpy as np
+import pyexcel
+from tqdm import tqdm
+
+import MOC.CalculateSteadyState as toSteadyState
+
+# Auther: Sirui Wang
+# Updated date: 13/July/2022
+"""Module Comment"""
+
+
+# Line Comment
 
 def create_domain(dt, run_time):
     t_range = np.arange(-dt, run_time + dt, dt)  # define time axis for the computational square

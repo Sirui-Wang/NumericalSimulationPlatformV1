@@ -1,10 +1,9 @@
 import networkx as nx
-
-global G
 import TransferMatrix.TransferMatrixEngine as TMEngine
 import MOC.MOCEngine as MOCEngine
 import copy
 
+global G
 G = nx.DiGraph()
 
 

@@ -1,10 +1,6 @@
-import numpy as np
-import os
-
-import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import pandas as pd
+# import pandas as pd
 import os
 
 
@@ -22,30 +18,30 @@ def ReadInput(filename):
     return adjpd, NodeAttribute_dict, EdgeAttribute_dict
 
 
-def CreateGraph(adjpd, NodeAttribute, EdgeAttribuite):
-    """
-    Take the Input parameters and create a graph with all field filled.
-    :param adjpd: adjancency matrix in pandas dataframe form
-    :param NodeAttribute: Node Attribute in Dictionary form
-    :param EdgeAttribuite: Edge Attribute in Diectionary form
-    :return: G, networkx graph with all field filled.
-    """
-    G = nx.convert_matrix.from_pandas_adjacency(adjpd, create_using=nx.DiGraph)
-    nx.set_node_attributes(G, NodeAttribute)
-    for i, item in EdgeAttribuite.items():
-        G[item["source"]][item["target"]]["length"] = item["length"]
-        G[item["source"]][item["target"]]["diameter"] = item["diameter"]
-        G[item["source"]][item["target"]]["material"] = item["material"]
-        G[item["source"]][item["target"]]["wave_velocity"] = item["wave_velocity"]
-        G[item["source"]][item["target"]]["friction_factor"] = item["friction_factor"]
-        G[item["source"]][item["target"]]["flow_velocity"] = item["flow_velocity"]
-    return G
-
-
-def main(filename):
-    adjpd, NodeAttribute, EdgeAttribuite = ReadInput(filename)
-    G = CreateGraph(adjpd, NodeAttribute, EdgeAttribuite)
-    return G
+# def CreateGraph(adjpd, NodeAttribute, EdgeAttribuite):
+#     """
+#     Take the Input parameters and create a graph with all field filled.
+#     :param adjpd: adjancency matrix in pandas dataframe form
+#     :param NodeAttribute: Node Attribute in Dictionary form
+#     :param EdgeAttribuite: Edge Attribute in Diectionary form
+#     :return: G, networkx graph with all field filled.
+#     """
+#     G = nx.convert_matrix.from_pandas_adjacency(adjpd, create_using=nx.DiGraph)
+#     nx.set_node_attributes(G, NodeAttribute)
+#     for i, item in EdgeAttribuite.items():
+#         G[item["source"]][item["target"]]["length"] = item["length"]
+#         G[item["source"]][item["target"]]["diameter"] = item["diameter"]
+#         G[item["source"]][item["target"]]["material"] = item["material"]
+#         G[item["source"]][item["target"]]["wave_velocity"] = item["wave_velocity"]
+#         G[item["source"]][item["target"]]["friction_factor"] = item["friction_factor"]
+#         G[item["source"]][item["target"]]["flow_velocity"] = item["flow_velocity"]
+#     return G
+#
+#
+# def main(filename):
+#     adjpd, NodeAttribute, EdgeAttribuite = ReadInput(filename)
+#     G = CreateGraph(adjpd, NodeAttribute, EdgeAttribuite)
+#     return G
 
 
 def get_G(file):

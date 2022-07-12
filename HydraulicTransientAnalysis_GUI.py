@@ -3,7 +3,6 @@ import os
 import tkinter
 from tkinter import *
 from tkinter import filedialog, ttk, messagebox
-
 import GUI_Engine_Interface as Interface
 
 # Auther: Sirui Wang

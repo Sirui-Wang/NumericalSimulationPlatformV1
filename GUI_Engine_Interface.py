@@ -35,6 +35,7 @@ def main(data_dict, progress_bar, ProgressPage):
             G.edges[edge[0], edge[1]]["HasSensor"] = LinkAttributes["HasSensor"]
             if LinkAttributes["HasSensor"]:
                 G.edges[edge[0], edge[1]]["SensorLocation"] = LinkAttributes["SensorLocation"]
+                G.edges[edge[0], edge[1]]["SensorDist"] = float(LinkAttributes["SensorDist"])
         else:
             if LinkAttributes["PertType"] == "None":
                 pass

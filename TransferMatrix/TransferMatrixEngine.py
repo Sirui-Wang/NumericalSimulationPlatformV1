@@ -1,9 +1,11 @@
+import copy
+import os
 from copy import deepcopy
-
+from tkinter import filedialog, messagebox
 import networkx as nx
 import numpy as np
 import scipy
-
+import pyexcel
 import TransferMatrix.tools as tools
 
 
@@ -200,6 +202,8 @@ def TMCalculation(data_pack):
     for junc, branches in branches_dict.items():
         records = (RowIterable, ColIterable, JuncIterable, column2del, h_placed)
         for node, data in branches.items():
+            """ node here is essentially the end/start node opposite to the junction
+            """
             paths, direction = data
             for path in paths:
                 U = np.identity(3)
@@ -208,10 +212,7 @@ def TMCalculation(data_pack):
                     if G.edges[edge]["PertType"] != "":
                         PertLocation = G.edges[edge]["PertLocation"]
                         PertType = G.edges[edge]["PertType"]
-                        if PertType == "Head":
-                            S = tools.source_matrix(False)
-                        else:
-                            S = tools.source_matrix(True)
+                        S = tools.source_matrix(PertType == "Flow")
                         if PertLocation == source:
                             U = S @ tools.field_matrix_single(G, source, target, freq) @ U
                         else:
@@ -244,10 +245,7 @@ def TMCalculation(data_pack):
                     if G.edges[edge]["PertType"] != "":
                         PertLocation = G.edges[edge]["PertLocation"]
                         PertType = G.edges[edge]["PertType"]
-                        if PertType == "Head":
-                            S = tools.source_matrix(False)
-                        else:
-                            S = tools.source_matrix(True)
+                        S = tools.source_matrix(PertType == "Flow")
                         FieldMatrix = tools.field_matrix_single(G, source, target, freq)
                         if PertLocation == source:
                             U = S @ FieldMatrix @ U
@@ -275,9 +273,9 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B):
     f = U[1][2]
     if direction == "upstream":
         # upstream relative to the junction, ie q(1) and h(3) are must have and Q(0) and H(2) are optional depends on boundary condition
-        startNode = path[0][0]
-        NodeBCType = G.nodes[startNode]["BCType"]
-        if NodeBCType == "Constant Flow":
+        # startNode = path[0][0]
+        NodeBCType = G.nodes[node]["BCType"]
+        if NodeBCType == "Constant flow":
             IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
             IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
             IndexMap[ColIterable + 2] = "{} head".format(path[0][0])
@@ -375,9 +373,9 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B):
             ColIterable += 4
             RowIterable += 2
     elif direction == "downstream":
-        endNode = path[-1][-1]
-        NodeBCType = G.nodes[endNode]["BCType"]
-        if NodeBCType == "Constant Flow":
+        # endNode = path[-1][-1]
+        NodeBCType = G.nodes[node]["BCType"]
+        if NodeBCType == "Constant flow":
             IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
             IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
             IndexMap[ColIterable + 2] = "{} head".format(path[0][0])
@@ -421,14 +419,97 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B):
             ColIterable += 4
             RowIterable += 2
     elif direction == "Simple":
-        """ Because the code is set up in such a way that the junction node will always be the upstream node.
-        """
-        print("placeholder")
+        IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
+        IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
+        IndexMap[ColIterable + 2] = "{} head".format(path[0][0])
+        IndexMap[ColIterable + 3] = "{} head".format(path[-1][-1])
+        """ Because the code is set up in such a way that the junction node will always be the upstream node."""
+        upBCType = G.nodes[junc]["BCType"]
+        downBCType = G.nodes[node]["BCType"]
+        if upBCType == "Constant head" and downBCType == "Constant head":
+            # since this is a simple path, there are and should only be two unknow for 2 eqn to solve.
+            # where previously it all connect to a junction, hence there will be 3 or 4 unknown needed solving
+            # H = 0 and h = 0, Q and q need solving resulting in index 2 and 3 being empty
+            a_temp = [[-1, a, 0, 0], [0, d, 0, 0]]
+            b_temp = [[-c], [-f]]
+            column2del.append(ColIterable + 2)
+            column2del.append(ColIterable + 3)
+        elif upBCType == "Constant head" and downBCType == "Constant flow":
+            a_temp = [[-1, 0, 0, b], [0, 0, 0, e]]
+            b_temp = [[-c], [-f]]
+            column2del.append(ColIterable + 1)
+            column2del.append(ColIterable + 2)
+        elif upBCType == "Constant flow" and downBCType == "Constant head":
+            a_temp = [[0, a, 0, 0], [0, d, -1, 0]]
+            b_temp = [[-c], [-f]]
+            column2del.append(ColIterable + 0)
+            column2del.append(ColIterable + 3)
+        elif upBCType == "Constant flow" and downBCType == "Constant flow":
+            a_temp = [[0, 0, 0, b], [0, 0, -1, e]]
+            b_temp = [[-c], [-f]]
+            column2del.append(ColIterable + 0)
+            column2del.append(ColIterable + 1)
+        A[RowIterable:RowIterable + 2, ColIterable:ColIterable + 4] = a_temp
+        B[RowIterable:RowIterable + 2] = b_temp
+        A = np.delete(A, 2, 0)
+        B = np.delete(B, 2, 0)
     records = (RowIterable, ColIterable, JuncIterable, column2del, h_placed)
     return records, A, B
 
 
+def CalculateAtSensor(Solutions, i, freq):
+    global result_dict
+    for edge in G.edges:
+        HasSensor = G.edges[edge]["HasSensor"]
+        if HasSensor:
+            SensorLocation = G.edges[edge]["SensorLocation"]
+            SensorDist = G.edges[edge]["SensorDist"]
+            PertType = G.edges[edge]["PertType"]
+            """Always take the value from the downstream end to forward calculate value at the sensor"""
+            freqHead = Solutions[edge][edge[1]]["head"]
+            freqFlow = Solutions[edge][edge[1]]["flow"]
+            if SensorLocation == edge[0]:
+                """always distance from the downstream end, if sensor is at the upstream, then the distance to 
+                downstream node is length - SensorDist """
+                length = G.edges[edge]["length"] - SensorDist
+            else:
+                """if sensor is at the downstream, then the length is just SensorDist since we are always calculate 
+                from the downstream end """
+                length = SensorDist
+            FieldMatrix = tools.Reverse_field_matrix_single(G, edge[0], edge[1], freq, length)
+            if PertType != "":
+                PertLocation = G.edges[edge]["PertLocation"]
+                S = tools.source_matrix(PertType == "Flow")
+                if PertLocation == edge[1]:
+                    backCalculatedResult = FieldMatrix @ S @ [[freqFlow], [freqHead], [1]]
+                else:
+                    backCalculatedResult = FieldMatrix @ [[freqFlow], [freqHead], [1]]
+            else:
+                backCalculatedResult = FieldMatrix @ [[freqFlow], [freqHead], [1]]
+            result_dict[edge]["hfreq"][i] = backCalculatedResult[1]
+            result_dict[edge]["qfreq"][i] = backCalculatedResult[0]
+
+
+def CalculateAllNode(Solutions, i):
+    global all_result_dict
+    for edge in G.edges:
+        source, target = edge
+        sourceFlow = Solutions[edge][source]["flow"]
+        sourceHead = Solutions[edge][source]["head"]
+        targetFlow = Solutions[edge][target]["flow"]
+        targetHead = Solutions[edge][target]["head"]
+        all_result_dict[edge]["source"]["hfreq"][i] = sourceHead
+        all_result_dict[edge]["source"]["qfreq"][i] = sourceFlow
+        all_result_dict[edge]["target"]["hfreq"][i] = targetHead
+        all_result_dict[edge]["target"]["qfreq"][i] = targetFlow
+
+
 def main(Graph, Envir, progress_bar, ProgressPage):
+    dirname = os.getcwd()
+    extensions = [("Excel File", ".xlsx")]
+    Output_loc = filedialog.asksaveasfilename(initialdir=dirname + "/Results", initialfile="Result", title="Save File",
+                                              defaultextension=".xlsx",
+                                              filetypes=extensions)  # Save File
     global G
     G = Graph
     G = node_classification(G)
@@ -439,9 +520,13 @@ def main(Graph, Envir, progress_bar, ProgressPage):
     dFreq = float(Envir["df"])
     maxFreq = int(Envir["MaxFreq"])
     freq_range = np.arange(0, maxFreq + dFreq, dFreq)
-    hfreq_array = np.zeros(len(freq_range), dtype=complex)
-    qfreq_array = np.zeros(len(freq_range), dtype=complex)
-    result_dict = dict.fromkeys(G.edges, {"hfreq": hfreq_array, "qfreq": qfreq_array, "SensorLocation": ""})
+    global result_dict, all_result_dict
+    result_dict = dict.fromkeys(list(G.edges))
+    all_result_dict = dict.fromkeys(list(G.edges))
+    for key in result_dict.keys():
+        result_dict[key] = {"hfreq": np.zeros(len(freq_range), dtype=complex), "qfreq": np.zeros(len(freq_range), dtype=complex)}
+        all_result_dict[key] = {"source": {"hfreq": np.zeros(len(freq_range), dtype=complex), "qfreq": np.zeros(len(freq_range), dtype=complex)},
+                                              "target": {"hfreq": np.zeros(len(freq_range), dtype=complex), "qfreq": np.zeros(len(freq_range), dtype=complex)}}
     if Envir["FreqMode"] == "MultiFrequency":
         for i in range(1, len(freq_range[1::])):
             freq = freq_range[i]
@@ -449,75 +534,47 @@ def main(Graph, Envir, progress_bar, ProgressPage):
             ProgressPage.update()
             data = (freq, branches_dict, sub_matrixes)
             Solutions = TMCalculation(data)
+            CalculateAtSensor(Solutions, i, freq)
+            CalculateAllNode(Solutions, i)
     else:
         freq = np.array([Envir["ExcitationFreq"]])
         data = (freq, branches_dict, sub_matrixes)
         Solutions = TMCalculation(data)
-
-    #     for edge in G.edges:
-    #         HasSensor = G.edges[edge]["HasSensor"]
-    #         if HasSensor == True or HasSensor == "normal":
-    #             Sensor_loc = G.edges[edge]["SensorLocation"]
-    #             dx = G.edges[edge]["SensorDist"]
-    #             HasValve = G.edges[edge]["HasValve"]
-    #             valveLocation = G.edges[edge]["ValveLocation"]
-    #             freqHead = Solutions[edge][Sensor_loc]["head"]
-    #             freqFlow = Solutions[edge][Sensor_loc]["flow"]
-    #             if HasValve:
-    #                 S = tools.source_matrix(G.edges[edge]["ValveMovement"] == "constant")
-    #                 if Sensor_loc == edge[0]:
-    #                     length = G.edges[edge]["length"] - dx
-    #                 else:
-    #                     length = dx
-    #                 if valveLocation == edge[0]:
-    #                     FieldMatrix = tools.Reverse_field_matrix_single(G, edge[0], edge[1], freq, length)
-    #                     # backCalculatedResult = S @ FieldMatrix @ [[freqFlow], [freqHead], [1]]
-    #                     backCalculatedResult = FieldMatrix @ [[freqFlow], [freqHead], [1]]
-    #                     # ASK!!! if we back calculate from the downstream, if the valve/perturbation is at the
-    #                     # upstream, should we multiply by source matrix again?
-    #                 else:
-    #                     FieldMatrix = tools.Reverse_field_matrix_single(G, edge[0], edge[1], freq, length)
-    #                     backCalculatedResult = FieldMatrix @ S @ [[freqFlow], [freqHead], [1]]
-    #             else:
-    #                 if Sensor_loc == edge[0]:
-    #                     length = G.edges[edge]["length"] - dx
-    #                 else:
-    #                     length = dx
-    #                 FieldMatrix = tools.Reverse_field_matrix_single(G, edge[0], edge[1], freq, length)
-    #                 backCalculatedResult = FieldMatrix @ [[freqFlow], [freqHead], [1]]
-    #             result_dict[edge]["hfreq"][i] = backCalculatedResult[1]
-    #             result_dict[edge]["qfreq"][i] = backCalculatedResult[0]
-    #             # result_dict[edge]["hfreq"][i] = freqHead
-    #             # result_dict[edge]["qfreq"][i] = freqFlow
-    # time = np.arange(0, (1 / dFreq) + 1 / (maxFreq), 1 / (maxFreq))
-    # df1 = pd.DataFrame()
-    # df1["Time"] = time
-    # for key, item in result_dict.items():
-    #     hfreq = item["hfreq"]
-    #     qfreq = item["qfreq"]
-    #     sensor_loc = item["SensorLocation"]
-    #     hTime_default = np.fft.ifft(hfreq, len(hfreq))
-    #     qTime_default = np.fft.ifft(qfreq, len(qfreq))
-    #     result = itertools.accumulate(hTime_default)
-    #     result = np.real(list(result))
-    #     plt.figure("H at {} in Frequency Domain".format(sensor_loc))
-    #     plt.plot(freq_range, abs(hfreq))
-    #     plt.figure("Q at {} in Frequency Domain".format(sensor_loc))
-    #     plt.plot(freq_range, abs(qfreq))
-    #     plt.figure("H at {}".format(sensor_loc))
-    #     plt.plot(time, result)  # accumulated Result
-    #     plt.plot(time, np.real(hTime_default))  # step change result
-    #     plt.figure("Q at {}".format(sensor_loc))
-    #     plt.plot(time, np.real(list(qTime_default)))
-    #     df1["delta_H at {}".format(sensor_loc)] = np.real(hTime_default)
-    #     df1["accu_Hat at {}".format(sensor_loc)] = result
-    #     df1["delta_Qat at {}".format(sensor_loc)] = np.real(qTime_default)
-    #     df1["HFreq at {}".format(sensor_loc)] = abs(hfreq)
-    #     df1["QFreq at {}".format(sensor_loc)] = abs(qfreq)
-    # dirname = os.getcwd()
-    # extensions = [("Excel File", ".xlsx")]
-    # Output_loc = filedialog.asksaveasfilename(initialdir=dirname + "/Results", title="Save File",
-    #                                           defaultextension=".xlsx", filetypes=extensions)
-    # df1.to_excel(Output_loc, sheet_name="TM")
-    # plt.show()
-    # ProgressPage.destroy()
+        progress_bar["value"] += 100
+        ProgressPage.update()
+        CalculateAtSensor(Solutions, int(freq / dFreq), freq)
+        CalculateAllNode(Solutions, int(freq / dFreq))
+    time = np.arange(0, (1 / dFreq) + (1 / maxFreq), 1 / maxFreq)
+    SaveDict = {}
+    for edge in G.edges:
+        source, target = edge
+        SensorHfreq = abs(result_dict[edge]["hfreq"])
+        SensorQfreq = abs(result_dict[edge]["qfreq"])
+        SourceHfreq = abs(all_result_dict[edge]["source"]["hfreq"])
+        SourceQfreq = abs(all_result_dict[edge]["source"]["qfreq"])
+        TargetHfreq = abs(all_result_dict[edge]["target"]["hfreq"])
+        TargetQfreq = abs(all_result_dict[edge]["target"]["qfreq"])
+        SensorHTime = np.real(np.fft.fft(SensorHfreq, len(SensorHfreq))) / (len(freq_range) / 2)
+        SensorQTime = np.real(np.fft.fft(SensorQfreq, len(SensorQfreq))) / (len(freq_range) / 2)
+        SourceHTime = np.real(np.fft.fft(SourceHfreq, len(SourceHfreq))) / (len(freq_range) / 2)
+        SourceQTime = np.real(np.fft.fft(SourceQfreq, len(SourceQfreq))) / (len(freq_range) / 2)
+        TargetHTime = np.real(np.fft.fft(TargetHfreq, len(TargetHfreq))) / (len(freq_range) / 2)
+        TargetQTime = np.real(np.fft.fft(TargetQfreq, len(TargetQfreq))) / (len(freq_range) / 2)
+        time_name = "Pipe {0}-{1} Time".format(source, target)
+        freq_name = "Pipe {0}-{1} Freq".format(source, target)
+        timeHeading = np.array(
+            ["Time", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor", "Flow Sensor",
+             "Head Target({})".format(target), "Flow Target({})".format(target)])
+        freqHeading = np.array(
+            ["Freq", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor", "Flow Sensor",
+             "Head Target({})".format(target), "Flow Target({})".format(target)])
+        SaveTime = np.column_stack((time, SourceHTime, SourceQTime, SensorHTime, SensorQTime, TargetHTime, TargetQTime))
+        SaveFreq = np.column_stack(
+            (freq_range, SourceHfreq, SourceQfreq, SensorHfreq, SensorQfreq, TargetHfreq, TargetQfreq))
+        SaveTime = np.row_stack((timeHeading, SaveTime))
+        SaveFreq = np.row_stack((freqHeading, SaveFreq))
+        SaveDict[time_name] = SaveTime.tolist()
+        SaveDict[freq_name] = SaveFreq.tolist()
+    pyexcel.save_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
+    ProgressPage.destroy()
+    print("File Saved")

@@ -12,6 +12,7 @@ G = nx.DiGraph()
 
 
 def main(data_dict, progress_bar, ProgressPage):
+    """Match GUI backend save dictionary to networkx G"""
     NodesDictionary = data_dict["Nodes"]
     LinksDictionary = data_dict["Links"]
     EnvirDictionary = data_dict["Environment"]

@@ -3,7 +3,7 @@ import os
 import tkinter
 from tkinter import *
 from tkinter import filedialog, ttk, messagebox
-
+from ctypes import windll
 import GUI_Engine_Interface as Interface
 
 # Auther: Sirui Wang
@@ -44,6 +44,7 @@ def OpenFile():
     LinksDictionary = recovered_dict["Links"]
     EnvirDictionary = recovered_dict["Environment"]
     for node in NodesDictionary.keys():
+        """Read saved file and create node"""
         x, y = NodesDictionary[node]["Coord"]
         drawArea.create_oval(x - 10, y - 10, x + 10, y + 10, fill="blue", tag=node)
         drawArea.create_text(x, y + 30, fill="blue", text=node, tag=node + "text")
@@ -53,6 +54,7 @@ def OpenFile():
         print(isBCVar.get())
         edit_node_menu.add_command(label=node, command=lambda n=node: editNode(n))
     for edge in LinksDictionary.keys():
+        """Read saved file and create link"""
         edgestr = edge.split(",")
         startNode = edgestr[0]
         endNode = edgestr[1]
@@ -68,6 +70,7 @@ def OpenFile():
     AnalysisMode.set(recovered_dict["Mode"])
     Refresh_display()
     if not recovered_dict["Mode"]:
+        """ (MOC) Read saved file in MOC mode and store relevant information in dictionary"""
         timestepEntry.delete(0, END)
         timestepEntry.insert(END, EnvirDictionary["dt"])
         runtimeEntry.delete(0, END)
@@ -77,15 +80,18 @@ def OpenFile():
         record_endEntry.delete(0, END)
         record_endEntry.insert(END, EnvirDictionary["RecordEnd"])
     else:
+        """ (TM) Read saved file in TM mode and store relevant information in dictionary"""
         global frequencyModeVar
         frequencyModeVar.set(EnvirDictionary["FreqMode"])
         Refresh_Panel()
         if EnvirDictionary["FreqMode"] == "MultiFrequency":
+            """Multi Frequency"""
             MultifreqStepEntry.delete(0, END)
             MultifreqStepEntry.insert(END, EnvirDictionary["df"])
             MultiFreqRangeEntry.delete(0, END)
             MultiFreqRangeEntry.insert(END, EnvirDictionary["MaxFreq"])
         else:
+            """Single Frequency"""
             FreqEntry.delete(0, END)
             FreqEntry.insert(END, EnvirDictionary["ExcitationFreq"])
             SinglefreqStepEntry.delete(0, END)
@@ -110,6 +116,7 @@ def SaveFile():
 
 
 def Refresh_Panel(*args):
+    """ Display the correct Environment panel based on environment frequency mode (single frequency / multi frequency)"""
     MultiFrame.grid_forget()
     SingleFrame.grid_forget()
     if frequencyModeVar.get() == "MultiFrequency":
@@ -119,6 +126,7 @@ def Refresh_Panel(*args):
 
 
 def Refresh_display():
+    """ Display the correct Environment panel based on Transient analysis mode ( MOC / TM )"""
     MOCFrame.pack_forget()
     TMFrame.pack_forget()
     Refresh_Panel()
@@ -129,11 +137,8 @@ def Refresh_display():
 
 
 def ChangeMode(Warning=True, *args):
-    """
-    This function is used to refresh main panel display on changing transient analysis mode
-    switching between input field for MOC modelling and Transfer matrix modelling
-    :return:
-    """
+    """ This function is to make sure that every time analysis mode is changed, the backend dictionary is refreshed
+    This is because if mode is changed after a network is created, it could cause error because some field do not exist"""
     Answer = clear(Warning, flip=True)
     if Answer:
         Refresh_display()
@@ -173,6 +178,7 @@ def startAnalysis():
 
 
 def node_BC_field(displayWindow, occurance, IS=True):
+    """ Modular function to display node Boundary condition, is called by both new node and edit existing node"""
     global BCFrame, BCVar  # declared for use in other function such as drawNodeNSave
     if occurance == "New":
         if isBCVar.get():
@@ -204,6 +210,7 @@ def node_BC_field(displayWindow, occurance, IS=True):
 
 
 def new_node():
+    """Gui where new node is created"""
     global add_node
     add_node = Toplevel()
     add_node.resizable(0, 0)
@@ -229,11 +236,13 @@ def new_node():
 
 
 def getorigin(NodeName, NodeHead):
+    """Function is needed as a mid step between save_node button, and create the node on canvas"""
     add_node.destroy()
     drawArea.bind("<Button 1>", lambda self: drawNodeNSave(self, NodeName, NodeHead))
 
 
 def drawNodeNSave(eventorigin, NodeName, NodeHead):
+    """The final step for a new node is created, actually create the node on canvas, and store all field information to background dictionary"""
     x = eventorigin.x
     y = eventorigin.y
     NodesDictionary[NodeName] = {"head": NodeHead}
@@ -249,6 +258,7 @@ def drawNodeNSave(eventorigin, NodeName, NodeHead):
 
 
 def editNode(key):
+    """Front end gui to edit node"""
     global editNodePage
     editNodePage = Toplevel()
     editNodePage.resizable(0, 0)
@@ -273,6 +283,7 @@ def editNode(key):
 
 
 def saveNodeEdit(key, node_head_entry):
+    """end function to save the new edited node"""
     NodesDictionary[key]["head"] = node_head_entry
     if isBCVar.get():
         NodesDictionary[key].update({"isBC": True, "BCType": BCVar.get()})
@@ -282,6 +293,7 @@ def saveNodeEdit(key, node_head_entry):
 
 
 def remove_node():
+    """front end gui to delete node"""
     global delete_node
     delete_node = Toplevel()
     delete_node.resizable(0, 0)
@@ -296,6 +308,7 @@ def remove_node():
 
 
 def destroy_node(NodeName):
+    """back end function to remove node from canvas, and clear dictionary corresponding to the node"""
     drawArea.delete(NodeName)
     drawArea.delete(NodeName + "text")
     edit_node_menu.delete(NodeName)
@@ -304,6 +317,7 @@ def destroy_node(NodeName):
 
 
 def link_MOC_property_field(displayWindow, key="New", HasPert=False):
+    """modular function to display front end gui of MOC property"""
     global MOCAdditionFrame
     MOCAdditionFrame = LabelFrame(displayWindow, text="Additional Boundary Condition", highlightthickness=2)
     Label(MOCAdditionFrame, text="Has perturbation").grid(row=0, column=0, sticky="w")
@@ -331,9 +345,11 @@ def link_MOC_property_field(displayWindow, key="New", HasPert=False):
 
 
 def MOC_perturbation_field(passed):
+    """modular function to display front end gui to introduce MOC perturbation"""
     displayWindow, PerturbationType, key = passed
     global PertFrame, Location, FlowRate, Frequency, Amplitude, StartTime
     if key == "New":
+        """When a new edge is created, the following code will be used"""
         try:
             PertFrame.destroy()
         except NameError:
@@ -387,6 +403,7 @@ def MOC_perturbation_field(passed):
             PertFrame.grid(row=10, column=0, sticky="ew")
             PertFrame.grid_columnconfigure(0, weight=1)
     else:
+        """When editing old links, use the following code, this is because for edited pages, entry needed to be filled with existing info"""
         PertFrame = LabelFrame(displayWindow, text=PerturbationType, highlightthickness=0)
         Label(PertFrame, text="Location").grid(row=0, column=0, sticky="w")  # perturbation location label
         Location = Entry(PertFrame)
@@ -448,6 +465,7 @@ def MOC_perturbation_field(passed):
 
 
 def link_TM_property_field(displayWindow, key="New", HasPert=False, HasSensor=False):
+    """modular function to display front end gui of TM property"""
     global TMAdditionFrame
     TMAdditionFrame = LabelFrame(displayWindow, text="Additional Boundary Condition", highlightthickness=2)
     Label(TMAdditionFrame, text="Has perturbation").grid(row=0, column=0, sticky="w")
@@ -488,9 +506,11 @@ def link_TM_property_field(displayWindow, key="New", HasPert=False, HasSensor=Fa
 
 
 def TM_perturbation_field(passed):
+    """modular function to display front end gui to introduce TM perturbation"""
     displayWindow, PerturbationType, key = passed
     global PertFrame, Location
     if key == "New":
+        """When a new link is created, the following code is used"""
         try:
             PertFrame.destroy()
         except NameError:
@@ -508,6 +528,7 @@ def TM_perturbation_field(passed):
         else:
             pass
     else:
+        """When a old link is edited, the following code is used"""
         PertFrame = LabelFrame(displayWindow, text=PerturbationType, highlightthickness=0)
         Label(PertFrame, text="Location").grid(row=0, column=0, sticky="w")  # perturbation location label
         Location = Entry(PertFrame)
@@ -518,8 +539,10 @@ def TM_perturbation_field(passed):
 
 
 def TM_sensor_field(displayWindow, key="New"):
+    """modular function to display front end gui to introduce TM sensor"""
     global SensorFrame, SensorLocation, SensorDist
     if key == "New":
+        """When a new link is created, use the following code"""
         try:
             SensorFrame.destroy()
         except NameError:
@@ -537,6 +560,7 @@ def TM_sensor_field(displayWindow, key="New"):
         else:
             pass
     else:
+        """When a old link is edited, use the following code"""
         SensorFrame = LabelFrame(displayWindow, highlightthickness=0)
         Label(SensorFrame, text="Sensor Location").grid(row=0, column=0, sticky="w")  # Sensor location label
         Label(SensorFrame, text="Distance to boundary").grid(row=1, column=0, sticky="w")
@@ -552,6 +576,7 @@ def TM_sensor_field(displayWindow, key="New"):
 
 # noinspection PyGlobalUndefined
 def link_Basic_property_field(displayWindow, key="New"):
+    """modular function to mount the display for link's basic property"""
     BasicFrame = LabelFrame(displayWindow, text="Basic Properties", highlightthickness=2)
     Label(BasicFrame, text="Specify Pipe Length in m").grid(row=0, column=0, sticky="w")  # pipe length label
     Label(BasicFrame, text="Specify Pipe Diameter in m").grid(row=1, column=0, sticky="w")  # pipe diameter label
@@ -570,6 +595,7 @@ def link_Basic_property_field(displayWindow, key="New"):
     if key == "New":
         pass
     else:
+        """Fill in info from backend dictionary to entry field when editing links"""
         l.insert(0, LinksDictionary[key]["Length"])
         d.insert(0, LinksDictionary[key]["Diameter"])
         a.insert(0, LinksDictionary[key]["Wave speed"])
@@ -583,6 +609,7 @@ def link_Basic_property_field(displayWindow, key="New"):
 
 
 def new_link():
+    """call all the modular functions to create the front end gui for creating new links"""
     global add_link
     add_link = Toplevel()
     add_link.resizable(0, 0)
@@ -612,6 +639,7 @@ def new_link():
 
 
 def drawLink():
+    """back end function to create link on canvas and save entry field to backend dictionary"""
     start = startNode.get()
     end = endNode.get()
     x0, y0 = NodesDictionary[start]["Coord"]
@@ -620,6 +648,7 @@ def drawLink():
     LinksDictionary["{},{}".format(start, end)] = {"Length": l.get(), "Diameter": d.get(), "Wave speed": a.get(),
                                                    "Friction factor": f.get(), "Flow Velocity": u.get()}
     if not AnalysisMode.get() and MOCPerturbationTypeVar.get() != "None":
+        """Save information for MOC"""
         LinksDictionary["{},{}".format(start, end)].update(
             {"PertType": MOCPerturbationTypeVar.get(), "Location": Location.get()})
         if MOCPerturbationTypeVar.get() == "Impulse":
@@ -631,8 +660,10 @@ def drawLink():
         else:
             LinksDictionary["{},{}".format(start, end)].update({"Freq": Frequency.get(), "Amp": Amplitude.get()})
     elif not AnalysisMode.get() and MOCPerturbationTypeVar.get() == "None":
+        """Save information for MOC"""
         LinksDictionary["{},{}".format(start, end)].update({"PertType": ""})
     else:
+        """Save information for TM"""
         if TMPerturbationTypeVar.get() != "None":
             LinksDictionary["{},{}".format(start, end)].update(
                 {"PertType": TMPerturbationTypeVar.get(), "Location": Location.get()})
@@ -652,6 +683,7 @@ def drawLink():
 
 
 def editLink(key):
+    """call all the modular function to create the front end gui used to edit saved links"""
     global editLinkPage
     editLinkPage = Toplevel()
     editLinkPage.title(key)
@@ -673,6 +705,7 @@ def editLink(key):
 
 
 def saveLinkEdit(key):
+    """Back end function to refresh back end links'dictionary based on entry filled in the entry field in edit link page"""
     start, end = key.split(",")
     LinksDictionary[key] = {}
     LinksDictionary[key]["Length"] = l.get()
@@ -718,6 +751,7 @@ def saveLinkEdit(key):
 
 
 def remove_link():
+    """front end gui to delete link"""
     global delete_link
     delete_link = Toplevel()
     delete_link.title("Delete specified link")
@@ -733,6 +767,7 @@ def remove_link():
 
 
 def destroy_link(start, end):
+    """back end function to remove link from back end dictionary"""
     drawArea.delete("{},{}".format(start, end))
     drawArea.delete("{},{}".format(start, end) + "text")
     edit_link_menu.delete("{},{}".format(start, end))
@@ -741,6 +776,7 @@ def destroy_link(start, end):
 
 
 def ViewLink():
+    """Front end gui to display back end link dictionary"""
     LinkSummary = Toplevel()
     LinkSummary.title("Link Summaries")
     # editLinkPage.resizable(0, 0)
@@ -774,6 +810,7 @@ def ViewLink():
 
 
 def ViewNode():
+    """Front end gui to display back end node dictionary"""
     NodeSummary = Toplevel()
     NodeSummary.title("Node Summaries")
     # editLinkPage.resizable(0, 0)
@@ -807,6 +844,7 @@ def ViewNode():
 
 
 def clear(Warning=True, flip=False):
+    """Delete everything on canvas, and clear all back end dictionary"""
     global NodesDictionary, LinksDictionary, EnvirDictionary
     if Warning:
         if messagebox.askyesno("Warning", message="Contiune will delete everything !"):
@@ -841,12 +879,11 @@ def clear(Warning=True, flip=False):
         return True
 
 
-from ctypes import windll
 
-windll.shcore.SetProcessDpiAwareness(1)
 """ Main Window """
+windll.shcore.SetProcessDpiAwareness(1)
 root = Tk()
-root.title("Transient Analysis")
+root.title("Hydraulic Transient Analysis")
 # Base size
 normal_width = 1080
 normal_height = 768
@@ -858,19 +895,19 @@ percentage_width = screen_width / (normal_width / 100)
 percentage_height = screen_height / (normal_height / 100)
 # Make a scaling factor, this is bases on average percentage from
 # width and height.
-scale_factor = 1.1*(((percentage_width + percentage_height) / 4) / 100)
-displayRes = "{}x{}".format(int(normal_width*scale_factor), int(normal_height*scale_factor))
+scale_factor = 1.1 * (((percentage_width + percentage_height) / 4) / 100)
+displayRes = "{}x{}".format(int(normal_width * scale_factor), int(normal_height * scale_factor))
 root.geometry(displayRes)  # Define initial window size
 # # Set the fontsize based on scale_factor,
 # # if the fontsize is less than minimum_size
 # # it is set to the minimum size
-# fontsize = int(11 * scale_factor)
-# minimum_size = 8
-# if fontsize < minimum_size:
-#     fontsize = minimum_size
-# # Create a style and configure for ttk.Button widget
-# default_style = ttk.Style()
-# default_style.configure('.', font=("Helvetica", fontsize))
+fontsize = int(10 * scale_factor)
+minimum_size = 8
+if fontsize < minimum_size:
+    fontsize = minimum_size
+# Create a style and configure for ttk.Button widget
+default_style = ttk.Style()
+default_style.configure('.', font=("Helvetica", fontsize))
 
 root.protocol("WM_DELETE_WINDOW", on_closing)
 mainMenu = Menu(root)
@@ -926,7 +963,7 @@ pw = PanedWindow(bd=2, relief="flat", orient=tkinter.HORIZONTAL)
 LeftFrame = LabelFrame(root, text="Draw network here")
 RightFrame = LabelFrame(root, text="Change run configuration here")
 pw.add(LeftFrame, stretch="always")
-pw.add(RightFrame, width=450 * scale_factor, stretch="never")
+pw.add(RightFrame, width=300 * scale_factor, stretch="never")
 pw.pack(fill=BOTH, expand=True)
 global MOCFrame, TMFrame  # declared global because it will be used in Function: Refresh
 MOCFrame = LabelFrame(RightFrame, borderwidth=0, highlightthickness=0)
@@ -958,11 +995,11 @@ MOCFrame.grid_columnconfigure(0, weight=1)
 saveconfigBtn = Button(MOCFrame, text="Save Configuration", command=saveConfig)
 saveconfigBtn.grid(row=20, column=0, columnspan=4, pady=(50, 0), sticky="ew")
 StartBtn = Button(MOCFrame, text="Start Analysis", command=startAnalysis)
-StartBtn.grid(row=21, column=0, columnspan=4, pady=25,sticky="ew")
+StartBtn.grid(row=21, column=0, columnspan=4, pady=25, sticky="ew")
 
 """Define TransferMatrx Frame layout"""
 Label(TMFrame, text="TM Run Configuration", font=("Helvetica", "24")).grid(row=0, column=0, columnspan=4, pady=10,
-                                                                           sticky="ew")# Title
+                                                                           sticky="ew")  # Title
 
 SelectionFrame = LabelFrame(TMFrame, borderwidth=0, highlightthickness=0)
 Label(SelectionFrame, text="FrequencyMode").grid(row=0, column=0, sticky="ew")
@@ -1001,7 +1038,7 @@ saveconfigBtn = Button(TMFrame, text="Save Configuration", command=saveConfig)
 saveconfigBtn.grid(row=10, column=0, columnspan=4, pady=(50, 0), sticky="ew")
 StartBtn = Button(TMFrame, text="Start Analysis", command=startAnalysis)
 StartBtn.grid(row=11, column=0, columnspan=4, pady=50, sticky="ew")
-TMFrame.grid_columnconfigure(0,weight=1)
+TMFrame.grid_columnconfigure(0, weight=1)
 
 """ Display selected analysis mode entry boxes on screen """
 AnalysisMode.set(False)

@@ -161,7 +161,6 @@ def startAnalysis():
     saveConfig()
     global Progresses
     Progresses = LabelFrame(RightFrame, text="Progress", height=20)
-    # Progresses.title("Progresses")
     my_progress = ttk.Progressbar(Progresses, orient=HORIZONTAL, length=400, mode="determinate")
     my_progress.pack(fill=BOTH, expand=1)
     Progresses.pack(fill=BOTH)
@@ -842,10 +841,38 @@ def clear(Warning=True, flip=False):
         return True
 
 
+from ctypes import windll
+
+windll.shcore.SetProcessDpiAwareness(1)
 """ Main Window """
 root = Tk()
 root.title("Transient Analysis")
-root.geometry("1080x768")  # Define initial window size
+# root.geometry("1080x768")  # Define initial window size
+
+
+# Base size
+normal_width = 1080
+normal_height = 768
+# Get screen size
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+# Get percentage of screen size from Base size
+percentage_width = screen_width / (normal_width / 100)
+percentage_height = screen_height / (normal_height / 100)
+# Make a scaling factor, this is bases on average percentage from
+# width and height.
+scale_factor = ((percentage_width + percentage_height) / 2) / 100
+# Set the fontsize based on scale_factor,
+# if the fontsize is less than minimum_size
+# it is set to the minimum size
+fontsize = int(11 * scale_factor)
+minimum_size = 8
+if fontsize < minimum_size:
+    fontsize = minimum_size
+# Create a style and configure for ttk.Button widget
+default_style = ttk.Style()
+default_style.configure('.', font=("Helvetica", fontsize))
+
 root.protocol("WM_DELETE_WINDOW", on_closing)
 mainMenu = Menu(root)
 root.config(menu=mainMenu)
@@ -900,7 +927,7 @@ pw = PanedWindow(bd=2, relief="flat", orient=tkinter.HORIZONTAL)
 LeftFrame = LabelFrame(root, text="Draw network here")
 RightFrame = LabelFrame(root, text="Change run configuration here")
 pw.add(LeftFrame, stretch="always")
-pw.add(RightFrame, width=400, stretch="never")
+pw.add(RightFrame, width=200 * scale_factor, stretch="never")
 pw.pack(fill=BOTH, expand=True)
 global MOCFrame, TMFrame  # declared global because it will be used in Function: Refresh
 MOCFrame = LabelFrame(RightFrame, borderwidth=0, highlightthickness=0)

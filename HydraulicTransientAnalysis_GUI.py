@@ -847,9 +847,6 @@ windll.shcore.SetProcessDpiAwareness(1)
 """ Main Window """
 root = Tk()
 root.title("Transient Analysis")
-# root.geometry("1080x768")  # Define initial window size
-
-
 # Base size
 normal_width = 1080
 normal_height = 768
@@ -861,17 +858,19 @@ percentage_width = screen_width / (normal_width / 100)
 percentage_height = screen_height / (normal_height / 100)
 # Make a scaling factor, this is bases on average percentage from
 # width and height.
-scale_factor = ((percentage_width + percentage_height) / 2) / 100
-# Set the fontsize based on scale_factor,
-# if the fontsize is less than minimum_size
-# it is set to the minimum size
-fontsize = int(11 * scale_factor)
-minimum_size = 8
-if fontsize < minimum_size:
-    fontsize = minimum_size
-# Create a style and configure for ttk.Button widget
-default_style = ttk.Style()
-default_style.configure('.', font=("Helvetica", fontsize))
+scale_factor = 1.1*(((percentage_width + percentage_height) / 4) / 100)
+displayRes = "{}x{}".format(int(normal_width*scale_factor), int(normal_height*scale_factor))
+root.geometry(displayRes)  # Define initial window size
+# # Set the fontsize based on scale_factor,
+# # if the fontsize is less than minimum_size
+# # it is set to the minimum size
+# fontsize = int(11 * scale_factor)
+# minimum_size = 8
+# if fontsize < minimum_size:
+#     fontsize = minimum_size
+# # Create a style and configure for ttk.Button widget
+# default_style = ttk.Style()
+# default_style.configure('.', font=("Helvetica", fontsize))
 
 root.protocol("WM_DELETE_WINDOW", on_closing)
 mainMenu = Menu(root)
@@ -927,7 +926,7 @@ pw = PanedWindow(bd=2, relief="flat", orient=tkinter.HORIZONTAL)
 LeftFrame = LabelFrame(root, text="Draw network here")
 RightFrame = LabelFrame(root, text="Change run configuration here")
 pw.add(LeftFrame, stretch="always")
-pw.add(RightFrame, width=200 * scale_factor, stretch="never")
+pw.add(RightFrame, width=450 * scale_factor, stretch="never")
 pw.pack(fill=BOTH, expand=True)
 global MOCFrame, TMFrame  # declared global because it will be used in Function: Refresh
 MOCFrame = LabelFrame(RightFrame, borderwidth=0, highlightthickness=0)
@@ -936,72 +935,73 @@ TMFrame = LabelFrame(RightFrame, borderwidth=0, highlightthickness=0)
 """Define MOC Frame layout"""
 # Define entry boxes
 Label(MOCFrame, text="MOC Run Configuration", font=("Helvetica", "24")).grid(row=0, column=0, columnspan=4, pady=10,
-                                                                             sticky="W")  # Title
-Label(MOCFrame, text="dt = ", anchor="e").grid(row=1, column=0, pady=10, sticky="W")  # dt Label
+                                                                             sticky="ew")  # Title
+Label(MOCFrame, text="dt = ", anchor="e").grid(row=1, column=0, pady=10)  # dt Label
 Label(MOCFrame, text="second").grid(row=1, column=3, pady=10)  # unit Label
-Label(MOCFrame, text="Total Run Time").grid(row=2, column=0, pady=10, sticky="W")  # total time Label
+Label(MOCFrame, text="Total Run Time").grid(row=2, column=0, pady=10)  # total time Label
 Label(MOCFrame, text="second").grid(row=2, column=3, pady=10)  # unit Label
-Label(MOCFrame, text="Record data from").grid(row=3, column=0, pady=10, sticky="W")  # record range Label
+Label(MOCFrame, text="Record data from").grid(row=3, column=0, pady=10)  # record range Label
 Label(MOCFrame, text="to").grid(row=3, column=2, pady=10)  # "to" Label
 Label(MOCFrame, text="Start/second").grid(row=4, column=1)  # unit Label
 Label(MOCFrame, text="End/second").grid(row=4, column=3)  # unit Label
-timestepEntry = Entry(MOCFrame, width=10)
+timestepEntry = Entry(MOCFrame)
 timestepEntry.grid(row=1, column=1, columnspan=2, pady=10, padx=0, sticky="WE")
-runtimeEntry = Entry(MOCFrame, width=10)
+runtimeEntry = Entry(MOCFrame)
 runtimeEntry.grid(row=2, column=1, columnspan=2, pady=10, ipadx=0, sticky="WE")
-record_startEntry = Entry(MOCFrame, width=10)
-record_endEntry = Entry(MOCFrame, width=10)
-record_startEntry.grid(row=3, column=1, pady=(10, 0), ipadx=0, sticky="WE")  # pady can take a tuple (top,bottom)
-record_endEntry.grid(row=3, column=3, pady=(10, 0), ipadx=0, sticky="WE")
+record_startEntry = Entry(MOCFrame)
+record_endEntry = Entry(MOCFrame)
+record_startEntry.grid(row=3, column=1, pady=(10, 0))  # pady can take a tuple (top,bottom)
+record_endEntry.grid(row=3, column=3, pady=(10, 0))
 
-EmptyLabel = Label(MOCFrame, text="")
-EmptyLabel.grid(row=5, column=0,
-                columnspan=4)  # Left sufficient place to add future required entry field, row starting from 5 ends at 19.
-
+MOCFrame.grid_columnconfigure(0, weight=1)
 # MOC save and start analysis
 saveconfigBtn = Button(MOCFrame, text="Save Configuration", command=saveConfig)
-saveconfigBtn.grid(row=20, column=1, columnspan=2, pady=(50, 0))
+saveconfigBtn.grid(row=20, column=0, columnspan=4, pady=(50, 0), sticky="ew")
 StartBtn = Button(MOCFrame, text="Start Analysis", command=startAnalysis)
-StartBtn.grid(row=21, column=1, columnspan=2, pady=25)
+StartBtn.grid(row=21, column=0, columnspan=4, pady=25,sticky="ew")
 
 """Define TransferMatrx Frame layout"""
 Label(TMFrame, text="TM Run Configuration", font=("Helvetica", "24")).grid(row=0, column=0, columnspan=4, pady=10,
-                                                                           sticky="ew")  # Title
+                                                                           sticky="ew")# Title
+
 SelectionFrame = LabelFrame(TMFrame, borderwidth=0, highlightthickness=0)
-Label(SelectionFrame, text="FrequencyMode").grid(row=0, column=0)
+Label(SelectionFrame, text="FrequencyMode").grid(row=0, column=0, sticky="ew")
 frequencyModeVar = StringVar()
 frequencyModeVar.set("MultiFrequency")
 FrequencyModeSelection = OptionMenu(SelectionFrame, frequencyModeVar, "MultiFrequency", "SingleFrequency")
 FrequencyModeSelection.grid(row=0, column=1, pady=10, padx=10, sticky="ew")
 SelectionFrame.grid(row=1, column=0, columnspan=4, padx=20, sticky="ew")
-
+SelectionFrame.grid_columnconfigure(0, weight=1)
 # Create Frame for multi-frequency analysis
 MultiFrame = LabelFrame(TMFrame, borderwidth=0, highlightthickness=0)
-Label(MultiFrame, text="dfreq = ", anchor="e").grid(row=0, column=0, pady=10, sticky="W")
-Label(MultiFrame, text="Max Freq").grid(row=1, column=0, pady=10, sticky="W")
-MultifreqStepEntry = Entry(MultiFrame, width=40)
+Label(MultiFrame, text="dfreq = ").grid(row=0, column=0, pady=10, sticky="ew")
+Label(MultiFrame, text="Max Freq").grid(row=1, column=0, pady=10, sticky="ew")
+MultifreqStepEntry = Entry(MultiFrame)
 MultifreqStepEntry.grid(row=0, column=1, pady=10, padx=10, columnspan=2, sticky="WE")
-MultiFreqRangeEntry = Entry(MultiFrame, width=40)
+MultiFreqRangeEntry = Entry(MultiFrame)
 MultiFreqRangeEntry.grid(row=1, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
+MultiFrame.grid_columnconfigure(0, weight=1)
 
 # Create Frame for single frequency analysis
 SingleFrame = LabelFrame(TMFrame, borderwidth=0, highlightthickness=0)
 Label(SingleFrame, text="Excitation Frequency").grid(row=0, column=0, pady=10)
-FreqEntry = Entry(SingleFrame, width=30)
+FreqEntry = Entry(SingleFrame)
 FreqEntry.grid(row=0, column=1, pady=10, columnspan=2, padx=10, sticky="WE")
-Label(SingleFrame, text="dfreq = ", anchor="e").grid(row=1, column=0, pady=10, sticky="W")
-Label(SingleFrame, text="Max Freq").grid(row=2, column=0, pady=10, sticky="W")
-SinglefreqStepEntry = Entry(SingleFrame, width=40)
+Label(SingleFrame, text="dfreq = ").grid(row=1, column=0, pady=10)
+Label(SingleFrame, text="Max Freq").grid(row=2, column=0, pady=10)
+SinglefreqStepEntry = Entry(SingleFrame)
 SinglefreqStepEntry.grid(row=1, column=1, pady=10, padx=10, columnspan=2, sticky="WE")
-SingleFreqRangeEntry = Entry(SingleFrame, width=40)
+SingleFreqRangeEntry = Entry(SingleFrame)
 SingleFreqRangeEntry.grid(row=2, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
 frequencyModeVar.trace("w", Refresh_Panel)
+SingleFrame.grid_columnconfigure(0, weight=1)
 
 # TM save and start analysis
 saveconfigBtn = Button(TMFrame, text="Save Configuration", command=saveConfig)
-saveconfigBtn.grid(row=10, column=1, columnspan=2, pady=(50, 0))
+saveconfigBtn.grid(row=10, column=0, columnspan=4, pady=(50, 0), sticky="ew")
 StartBtn = Button(TMFrame, text="Start Analysis", command=startAnalysis)
-StartBtn.grid(row=11, column=1, columnspan=2, pady=50)
+StartBtn.grid(row=11, column=0, columnspan=4, pady=50, sticky="ew")
+TMFrame.grid_columnconfigure(0,weight=1)
 
 """ Display selected analysis mode entry boxes on screen """
 AnalysisMode.set(False)

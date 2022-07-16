@@ -1,10 +1,11 @@
 import json
 import os
 import tkinter
+from ctypes import windll
 from tkinter import *
 from tkinter import filedialog, ttk, messagebox
-from ctypes import windll
-import GUI_Engine_Interface as Interface
+
+import convertion.GUI_Engine_Interface as Interface
 
 # Auther: Sirui Wang
 # Updated date: 13/July/2022
@@ -162,7 +163,7 @@ def saveConfig():
 
 
 def startAnalysis():
-    """pass all information to a interface between the GUI and engine to start transient analysis"""
+    """pass all information to a convertion between the GUI and engine to start transient analysis"""
     saveConfig()
     global Progresses
     Progresses = LabelFrame(RightFrame, text="Progress", height=20)

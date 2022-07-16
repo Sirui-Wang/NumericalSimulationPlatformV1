@@ -5,9 +5,10 @@ from tkinter import filedialog, messagebox
 
 import numpy as np
 import pyexcel
-from tqdm import tqdm
 
 import MOC.CalculateSteadyState as toSteadyState
+
+# from tqdm import tqdm
 
 # Auther: Sirui Wang
 # Updated date: 13/July/2022
@@ -394,7 +395,7 @@ def main(Graph, Envir, progress_bar, ProgressPage):
     G = node_classification(G)
     decomposed_network = network_decomposition(G)
     count = 0
-    for t in tqdm(range(1, len(t_range))):
+    for t in range(1, len(t_range)):
         progress_bar["value"] += 100 / len(t_range[1::])
         ProgressPage.update()
         G = analysis(t, decomposed_network, G)

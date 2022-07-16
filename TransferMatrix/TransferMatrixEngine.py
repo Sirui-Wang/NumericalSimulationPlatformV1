@@ -1,12 +1,118 @@
-import copy
 import os
 from copy import deepcopy
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
+
 import networkx as nx
 import numpy as np
-import scipy
 import pyexcel
-import TransferMatrix.tools as tools
+
+
+def block_diag_selfmade(*arrs):
+    """Create a block diagonal matrix from the provided arrays.
+
+    Given the inputs `A`, `B` and `C`, the output will have these
+    arrays arranged on the diagonal::
+
+        [[A, 0, 0],
+         [0, B, 0],
+         [0, 0, C]]
+
+    If all the input arrays are square, the output is known as a
+    block diagonal matrix.
+
+    Parameters
+    ----------
+    A, B, C, ... : array-like, up to 2D
+        Input arrays.  A 1D array or array-like sequence with length n is
+        treated as a 2D array with shape (1,n).
+
+    Returns
+    -------
+    D : ndarray
+        Array with `A`, `B`, `C`, ... on the diagonal.  `D` has the
+        same dtype as `A`.
+
+    References
+    ----------
+    .. [1] Wikipedia, "Block matrix",
+           http://en.wikipedia.org/wiki/Block_diagonal_matrix
+    """
+    if arrs == ():
+        arrs = ([],)
+    arrs = [np.atleast_2d(a) for a in arrs]
+
+    bad_args = [k for k in range(len(arrs)) if arrs[k].ndim > 2]
+    if bad_args:
+        raise ValueError("arguments in the following positions have dimension "
+                         "greater than 2: %s" % bad_args)
+
+    shapes = np.array([a.shape for a in arrs])
+    out = np.zeros(np.sum(shapes, axis=0), dtype=arrs[0].dtype)
+
+    r, c = 0, 0
+    for i, (rr, cc) in enumerate(shapes):
+        out[r:r + rr, c:c + cc] = arrs[i]
+        r += rr
+        c += cc
+    return out
+
+
+def field_matrix_single(G, source, target, freq):
+    L = G.edges[source, target]["length"]
+    a = G.edges[source, target]["wave_velocity"]
+    D = G.edges[source, target]["diameter"]
+    fc = G.edges[source, target]["friction_factor"]
+    U = G.edges[source, target]["flow_velocity"]
+    n = 2  # empirical number
+    j = 1j
+    g = 9.81
+    A = (np.pi * D ** 2) / 4  # D = diameter of the pipe
+    Q0 = A * U
+    # Q0 = 0.01
+    omega = 2 * np.pi * freq  # T = Theoretical period
+    R = (n * fc * (Q0 ** (n - 1))) / (2 * g * D * (A ** n))
+    "Field Matrix for single conduit"
+    mu = np.sqrt(-((omega ** 2) / (a ** 2)) + ((j * g * A * omega * R) / (a ** 2)))
+    Zc = (mu * a ** 2) / (j * omega * g * A)
+    F = np.array([[np.cosh(mu * L), (-1 / Zc) * np.sinh(mu * L), 0],
+                  [-Zc * np.sinh(mu * L), np.cosh(mu * L), 0],
+                  [0, 0, 1]])
+    return F
+
+
+def Reverse_field_matrix_single(G, source, target, freq, length):
+    L = length
+    a = G.edges[source, target]["wave_velocity"]
+    D = G.edges[source, target]["diameter"]
+    fc = G.edges[source, target]["friction_factor"]
+    U = G.edges[source, target]["flow_velocity"]
+    n = 2  # empirical number
+    j = 1j
+    g = 9.81
+    A = (np.pi * D ** 2) / 4  # D = diameter of the pipe
+    Q0 = A * U
+    # Q0 = 0.01
+    omega = 2 * np.pi * freq  # T = Theoretical period
+    R = (n * fc * (Q0 ** (n - 1))) / (2 * g * D * (A ** n))
+    "Field Matrix for single conduit"
+    mu = np.sqrt(-((omega ** 2) / (a ** 2)) + ((j * g * A * omega * R) / (a ** 2)))
+    Zc = (mu * a ** 2) / (j * omega * g * A)
+    F = np.array([[np.cosh(mu * L), (-1 / Zc) * np.sinh(mu * L), 0],
+                  [-Zc * np.sinh(mu * L), np.cosh(mu * L), 0],
+                  [0, 0, 1]])
+    return F
+
+
+def source_matrix(isPertFlow):
+    if isPertFlow == True:
+        PMat = [[1, 0, 1],
+                [0, 1, 0],
+                [0, 0, 1]]
+    else:
+        PMat = [[1, 0, 0],
+                [0, 1, 1],
+                [0, 0, 1]]
+    return PMat
 
 
 def node_classification(G):
@@ -181,7 +287,7 @@ def TMCalculation(data_pack):
     juncs = list(sub_matrixes.keys())
     A = sub_matrixes[juncs[0]]["aa"]
     for junc in juncs[1::]:
-        A = scipy.linalg.block_diag(A, sub_matrixes[junc]["aa"])
+        A = block_diag_selfmade(A, sub_matrixes[junc]["aa"])
     A = np.array(A, dtype=complex)
     B = np.zeros((len(A), 1), dtype=complex)
     global IndexMap
@@ -209,13 +315,13 @@ def TMCalculation(data_pack):
                     if G.edges[edge]["PertType"] != "":
                         PertLocation = G.edges[edge]["PertLocation"]
                         PertType = G.edges[edge]["PertType"]
-                        S = tools.source_matrix(PertType == "Flow")
+                        S = source_matrix(PertType == "Flow")
                         if PertLocation == source:
-                            U = S @ tools.field_matrix_single(G, source, target, freq) @ U
+                            U = S @ field_matrix_single(G, source, target, freq) @ U
                         else:
-                            U = tools.field_matrix_single(G, source, target, freq) @ S @ U
+                            U = field_matrix_single(G, source, target, freq) @ S @ U
                     else:
-                        U = tools.field_matrix_single(G, source, target, freq) @ U
+                        U = field_matrix_single(G, source, target, freq) @ U
                 records, A, B = creatingMatrix(U, direction, path, junc, node, records, A, B)
         RowIterable, ColIterable, JuncIterable, column2del, h_placed = records
     A = np.delete(A, column2del, 1)
@@ -242,8 +348,8 @@ def TMCalculation(data_pack):
                     if G.edges[edge]["PertType"] != "":
                         PertLocation = G.edges[edge]["PertLocation"]
                         PertType = G.edges[edge]["PertType"]
-                        S = tools.source_matrix(PertType == "Flow")
-                        FieldMatrix = tools.field_matrix_single(G, source, target, freq)
+                        S = source_matrix(PertType == "Flow")
+                        FieldMatrix = field_matrix_single(G, source, target, freq)
                         if PertLocation == source:
                             U = S @ FieldMatrix @ U
                         elif PertLocation == target:
@@ -473,10 +579,10 @@ def CalculateAtSensor(Solutions, i, freq):
                 """if sensor is at the downstream, then the length is just SensorDist since we are always calculate 
                 from the downstream end """
                 length = SensorDist
-            FieldMatrix = tools.Reverse_field_matrix_single(G, edge[0], edge[1], freq, length)
+            FieldMatrix = Reverse_field_matrix_single(G, edge[0], edge[1], freq, length)
             if PertType != "":
                 PertLocation = G.edges[edge]["PertLocation"]
-                S = tools.source_matrix(PertType == "Flow")
+                S = source_matrix(PertType == "Flow")
                 if PertLocation == edge[1]:
                     backCalculatedResult = FieldMatrix @ S @ [[freqFlow], [freqHead], [1]]
                 else:

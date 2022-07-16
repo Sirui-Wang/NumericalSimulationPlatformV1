@@ -1,6 +1,6 @@
 import json
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
@@ -208,7 +208,7 @@ def main(G, dt, ICfile):
     with open(ICfile, "w") as file:
         json.dump(steadystate_dict, file)
     file.close()
-    for edge in G.edges():
-        plt.figure(str(edge) + "IC")
-        plt.plot(t_range, np.flip(G.edges[edge]["H_mat"][:, -2]))
-    plt.show()
+    # for edge in G.edges():
+    #     plt.figure(str(edge) + "IC")
+    #     plt.plot(t_range, np.flip(G.edges[edge]["H_mat"][:, -2]))
+    # plt.show()

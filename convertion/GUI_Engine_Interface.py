@@ -50,12 +50,12 @@ def main(data_dict, progress_bar, ProgressPage):
                 G.edges[edge[0], edge[1]]["Start Time"] = float(LinkAttributes["Time"])
                 G.edges[edge[0], edge[1]]["PertLocation"] = LinkAttributes["Location"]
             elif LinkAttributes["PertType"] == "Sinusoidal Head":
-                G.edges[edge[0], edge[1]]["Frequency"] = float(LinkAttributes["Freq"])
-                G.edges[edge[0], edge[1]]["Amplitude"] = float(LinkAttributes["Amp"])
+                G.edges[edge[0], edge[1]]["Freq"] = float(LinkAttributes["Freq"])
+                G.edges[edge[0], edge[1]]["Amp"] = float(LinkAttributes["Amp"])
                 G.edges[edge[0], edge[1]]["PertLocation"] = LinkAttributes["Location"]
             elif LinkAttributes["PertType"] == "Sinusoidal Flow":
-                G.edges[edge[0], edge[1]]["Frequency"] = float(LinkAttributes["Freq"])
-                G.edges[edge[0], edge[1]]["Amplitude"] = float(LinkAttributes["Amp"])
+                G.edges[edge[0], edge[1]]["Freq"] = float(LinkAttributes["Freq"])
+                G.edges[edge[0], edge[1]]["Amp"] = float(LinkAttributes["Amp"])
                 G.edges[edge[0], edge[1]]["PertLocation"] = LinkAttributes["Location"]
             elif LinkAttributes["PertType"] == "Controlled Flow":
                 G.edges[edge[0], edge[1]]["Start Time"] = float(LinkAttributes["Time"])

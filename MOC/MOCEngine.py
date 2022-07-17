@@ -402,14 +402,14 @@ def main(Graph, Envir, progress_bar, ProgressPage):
     t_range = G.graph["time_seq"]
     time = t_range[1::]  # to get rid of the -dt term used for steady state
     SaveDict = {}
-    if isinstance(Envir["RecordStart"], str):
+    try:
+        saveStartIndex = int(float(Envir["RecordStart"]) / dt)
+    except ValueError:
         saveStartIndex = 0
-    else:
-        saveStartIndex = int((Envir["RecordStart"]) / dt)
-    if isinstance(Envir["RecordEnd"], str):
+    try:
+        saveEndIndex = int(float(Envir["RecordEnd"]) / dt)
+    except ValueError:
         saveEndIndex = -1
-    else:
-        saveEndIndex = int((Envir["RecordEnd"]) / dt)
     for edge in list(G.edges):
         H_mat = G.edges[edge]["H_mat"][1::]  # to get rid of the -dt term used for Steady state
         H_mat = np.flip(H_mat, axis=0)

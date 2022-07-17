@@ -70,7 +70,6 @@ def node_classification(G):
 
 
 def analysis(t, decomposed_network, G):
-    print("pause")
     for node, branch in decomposed_network.items():
         node_class = G.nodes[node]["classification"]
         """Apply a special boundary condition at the sink/source depends on input. Default is Constant Head

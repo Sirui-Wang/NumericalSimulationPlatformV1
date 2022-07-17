@@ -143,7 +143,7 @@ def IdentJunction(G):
     for node in G.nodes():
         if G.nodes[node]["classification"] == "BranchConnection":
             JunctionList.append(node)
-    return JunctionList
+    return sorted(JunctionList)
 
 
 def path2edge_simple(node_list):
@@ -254,9 +254,10 @@ def SortByJunc(G, branches_dict):
                     if not tuple(sorted((source, target))) in included:
                         if junc == source:
                             temp.update({target: data})
+                            included.add(tuple(sorted((source, target))))
                         elif junc == target:
                             temp.update({source: data})
-                        included.add(tuple(sorted((source, target))))
+                            included.add(tuple(sorted((source, target))))
             Sorted_dict[junc] = temp
     return Sorted_dict
 
@@ -309,6 +310,8 @@ def TMCalculation(data_pack):
             """
             paths, direction = data
             for path in paths:
+                # if path == [("R2", "B")]:
+                #     print("pause")
                 U = np.identity(3)
                 for edge in path[-1::-1]:
                     source, target = edge
@@ -627,9 +630,12 @@ def main(Graph, Envir, progress_bar, ProgressPage):
     result_dict = dict.fromkeys(list(G.edges))
     all_result_dict = dict.fromkeys(list(G.edges))
     for key in result_dict.keys():
-        result_dict[key] = {"hfreq": np.zeros(len(freq_range), dtype=complex), "qfreq": np.zeros(len(freq_range), dtype=complex)}
-        all_result_dict[key] = {"source": {"hfreq": np.zeros(len(freq_range), dtype=complex), "qfreq": np.zeros(len(freq_range), dtype=complex)},
-                                              "target": {"hfreq": np.zeros(len(freq_range), dtype=complex), "qfreq": np.zeros(len(freq_range), dtype=complex)}}
+        result_dict[key] = {"hfreq": np.zeros(len(freq_range), dtype=complex),
+                            "qfreq": np.zeros(len(freq_range), dtype=complex)}
+        all_result_dict[key] = {"source": {"hfreq": np.zeros(len(freq_range), dtype=complex),
+                                           "qfreq": np.zeros(len(freq_range), dtype=complex)},
+                                "target": {"hfreq": np.zeros(len(freq_range), dtype=complex),
+                                           "qfreq": np.zeros(len(freq_range), dtype=complex)}}
     if Envir["FreqMode"] == "MultiFrequency":
         for i in range(1, len(freq_range[1::])):
             freq = freq_range[i]
@@ -673,7 +679,8 @@ def main(Graph, Envir, progress_bar, ProgressPage):
              "Head Target({})".format(target), "Flow Target({})".format(target)])
         SaveTime = np.column_stack((time, SourceHTime, SourceQTime, SensorHTime, SensorQTime, TargetHTime, TargetQTime))
         SaveFreq = np.column_stack(
-            (freq_range, abs(SourceHfreq), abs(SourceQfreq), abs(SensorHfreq), abs(SensorQfreq), abs(TargetHfreq), abs(TargetQfreq)))
+            (freq_range, abs(SourceHfreq), abs(SourceQfreq), abs(SensorHfreq), abs(SensorQfreq), abs(TargetHfreq),
+             abs(TargetQfreq)))
         SaveTime = np.row_stack((timeHeading, SaveTime))
         SaveFreq = np.row_stack((freqHeading, SaveFreq))
         SaveDict[time_name] = SaveTime.tolist()

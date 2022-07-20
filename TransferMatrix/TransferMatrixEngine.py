@@ -685,6 +685,7 @@ def main(Graph, Envir, progress_bar, ProgressPage):
         SaveFreq = np.row_stack((freqHeading, SaveFreq))
         SaveDict[time_name] = SaveTime.tolist()
         SaveDict[freq_name] = SaveFreq.tolist()
-    pyexcel.save_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
+    pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
     ProgressPage.destroy()
+    pyexcel.free_resources()
     print("File Saved")

@@ -78,7 +78,9 @@ def network_decomposition(G):
 
 
 def analysis(t, decomposed_network, G):
-    global count
+    global count, isSinePert, SineFreq
+    isSinePert = False
+    SineFreq = 0
     for node, branch in decomposed_network.items():
         node_class = G.nodes[node]["classification"]
         if node_class == "Sink":
@@ -197,6 +199,8 @@ def analysis(t, decomposed_network, G):
                 UP = UA + (9.81 / a) * (-HP + HA - ((f * UA * abs(UA)) / (4 * 9.81 * r)) * dx)
                 G.edges[edge]["H_mat"][-t - 1, -1] = HP
                 G.edges[edge]["U_mat"][-t - 1, -1] = UP
+                isSinePert = True
+                SineFreq = G.edges[edge]["Freq"]
             elif G.edges[edge]["PertType"] == "Sinusoidal Flow" and G.edges[edge]["PertLocation"] == node:
                 """Same with Sinusoidal head perturbation but just with flow"""
                 SSFlowSpeed = G.edges[edge]["U_mat"][-1, -1]
@@ -206,6 +210,8 @@ def analysis(t, decomposed_network, G):
                 HP = HA - ((f * UA * abs(UA)) / (4 * 9.81 * r)) * dx - (a / 9.81) * (UP - UA)
                 G.edges[edge]["H_mat"][-t - 1, -1] = HP
                 G.edges[edge]["U_mat"][-t - 1, -1] = UP
+                isSinePert = True
+                SineFreq = G.edges[edge]["Freq"]
         elif node_class == "Source":
             NodeBCType = G.nodes[node]["BCType"]
             edge = list(branch.keys())[0]
@@ -299,6 +305,8 @@ def analysis(t, decomposed_network, G):
                 UP = UB + (9.81 / a) * (HP - HB - ((f * UB * abs(UB)) / (4 * 9.81 * r)) * dx)
                 G.edges[edge]["H_mat"][-t - 1, 0] = HP
                 G.edges[edge]["U_mat"][-t - 1, 0] = UP
+                isSinePert = True
+                SineFreq = G.edges[edge]["Freq"]
             elif G.edges[edge]["PertType"] == "Sinusoidal Flow" and G.edges[edge]["PertLocation"] == node:
                 SSFlowSpeed = G.edges[edge]["U_mat"][-1, 0]
                 omega = 2 * np.pi * G.edges[edge]["Freq"]
@@ -307,6 +315,8 @@ def analysis(t, decomposed_network, G):
                 HP = (a / 9.81) * (UP - UB) + HB + ((f * UB * abs(UB)) / (4 * 9.81 * r)) * dx
                 G.edges[edge]["H_mat"][-t - 1, 0] = HP
                 G.edges[edge]["U_mat"][-t - 1, 0] = UP
+                isSinePert = True
+                SineFreq = G.edges[edge]["Freq"]
         else:
             # doesnt matter what is inputed as BC type, if it is not classified as a edge node, ignore BCtype and proceed with the assumption of it is not a BC node
             size = len(branch) + 1
@@ -404,32 +414,58 @@ def main(Graph, Envir, progress_bar, ProgressPage):
     SaveDict = {}
     try:
         saveStartIndex = int(float(Envir["RecordStart"]) / dt)
-    except ValueError:
+        record_start = float(Envir["RecordStart"])
+    except (ValueError, IndexError):
         saveStartIndex = 0
+        record_start = 0
     try:
         saveEndIndex = int(float(Envir["RecordEnd"]) / dt)
-    except ValueError:
+        record_end = float(Envir["RecordEnd"])
+        if saveEndIndex == t_range[-1]:
+            saveEndIndex = -1
+    except (ValueError, IndexError):
         saveEndIndex = -1
+        record_end = t_range[-1]
+    global isSinePert, SineFreq
+    if isSinePert:
+        Period = 1/SineFreq
+        Record_Duration = record_end - record_start
+        if 10*Period < Record_Duration:
+            Average_index_range = -np.round((10*Period)/dt)
+        elif 5*Period < Record_Duration:
+            Average_index_range = -np.round((5*Period)/dt)
+        elif 3*Period < Record_Duration:
+            Average_index_range = -np.round((3*Period)/dt)
+        elif 1*Period < Record_Duration:
+            Average_index_range = -np.round((1*Period)/dt)
     for edge in list(G.edges):
         H_mat = G.edges[edge]["H_mat"][1::]  # to get rid of the -dt term used for Steady state
         H_mat = np.flip(H_mat, axis=0)
         source, target = edge
         time_name = "Pipe {0}-{1} Time".format(source, target)
         freq_name = "Pipe {0}-{1} Freq".format(source, target)
-        trimed_time = time[saveStartIndex:saveEndIndex]
-        trimed_data = H_mat[saveStartIndex:saveEndIndex]
+        if saveEndIndex == -1:
+            trimed_time = time[saveStartIndex:]
+            trimed_data = H_mat[saveStartIndex:]
+        else:
+            trimed_time = time[saveStartIndex:saveEndIndex]
+            trimed_data = H_mat[saveStartIndex:saveEndIndex]
         Nrow, Ncol = trimed_data.shape
         fft_H_mat = np.zeros_like(trimed_data)
         fft_range = np.linspace(0, 1 / dt, len(trimed_time))
         for col in range(Ncol):
             data = trimed_data[:, col]
-            data = data - np.mean(data)
+            if isSinePert:
+                data = data - np.mean(data[int(Average_index_range):])
+            else:
+                data = data-data[-1]
             fft_result = abs(np.fft.fft(data)) / (len(fft_range) / 2)
             fft_H_mat[:, col] = fft_result
         SaveTime = np.column_stack((trimed_time, trimed_data))
         SaveFreq = np.column_stack((fft_range, fft_H_mat))
         SaveDict[time_name] = SaveTime.tolist()
         SaveDict[freq_name] = SaveFreq.tolist()
-    pyexcel.save_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
-    ProgressPage.destroy()
+    pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
+    ProgressPage.pack_forget()
+    pyexcel.free_resources()
     print("File Saved")

@@ -71,17 +71,48 @@ def analysis(BasicPipeProperties, PipeSegmentsLength, Freq_range, Sensor1, Senso
     Sensor2_Head_fResponse = np.zeros((len(Freq_range)), dtype=complex)
     for i in tqdm(range(1, len(Freq_range))):
         freq = Freq_range[i]
+        D, a, f, U = BasicPipeProperties
+        g = 9.81
+        A = (np.pi * D ** 2) / 4  # Area
         U = FieldMatrix(BasicPipeProperties, PipeSegmentsLength[Segments[0]], freq)
         for SegmentID in Segments[1::]:
             SegmentLength = PipeSegmentsLength[SegmentID]
             F = FieldMatrix(BasicPipeProperties, SegmentLength, freq)
             U = F @ S @ U
-        A = [[-1, U[0][1]], [0, U[1][1]]]
-        B = [[-U[0][2]], [-U[1][2]]]
-        Solution = np.linalg.solve(A, B)
-        Sensor1_Head_fResponse[i] = HeadAtSensor(BasicPipeProperties, q=0, h=Solution[1], sensor=Sensor1, freq=freq,
+        c1 = U[0][0]
+        c2 = U[0][1]
+        c3 = U[0][2]
+        c4 = U[1][0]
+        c5 = U[1][1]
+        c6 = U[1][2]
+        inifiniteBC = False
+        if inifiniteBC:
+            EQA = [[-1, c2],
+                 [0, c5]]
+            EQB = [[-c3],
+                 [-c6]]
+            Solution = np.linalg.solve(EQA, EQB)
+            Q = Solution[0]
+            H = 0
+            q = 0
+            h = Solution[1]
+        else:
+            EQA = [[-1, c1, 0, c2],
+                 [0, c4, -1, c5],
+                 [1,0,-(g/a)*A, 0],
+                 [0, 1, 0, -(g/a)*A]]
+            EQB = [[-c3],
+                 [-c6],
+                 [0],
+                 [0]]
+            Solution = np.linalg.solve(EQA, EQB)
+            Q = Solution[0]
+            q = Solution[1]
+            H = Solution[2]
+            h = Solution[3]
+        Sensor1_Head_fResponse[i] = HeadAtSensor(BasicPipeProperties, q=q, h=h, sensor=Sensor1, freq=freq,
                                                  PipeSegments=PipeSegmentsLength)
-        Sensor2_Head_fResponse[i] = HeadAtSensor(BasicPipeProperties, q=0, h=Solution[1], sensor=Sensor2, freq=freq,
+        Sensor2_Head_fResponse[i] = HeadAtSensor(BasicPipeProperties, q=q, h=h, sensor=Sensor2, freq=freq,
                                                  PipeSegments=PipeSegmentsLength)
     return Sensor1_Head_fResponse, Sensor2_Head_fResponse
 
@@ -115,21 +146,21 @@ def main():
     # must be long and heavily damped system, such that a impulse introduced within the middle section does not(have
     # minimum) reflection from the either ends
     # all units are SI unit
-    L = 11000  # Full pipe length
+    L = 1000  # Full pipe length
     D = 0.1  # diameter
     a = 1000  # wavespeed
-    f = 0.102  # friction factor
+    f = 0.02  # friction factor
     U = 1.27  # flow velocity
-    df = 0.0025
-    MaxF = 100
+    df = 0.025
+    MaxF = 1000
     Freq_range = np.arange(0, MaxF + df, df)
     BasicPipeProperties = (D, a, f, U)
     # Critical component location (distance from upstream)
-    Sensor1_dist = 5000  # distance from upstream
-    Sensor2_dist = 6000  # distance from upstream
+    Sensor1_dist = 450  # distance from upstream
+    Sensor2_dist = 550  # distance from upstream
     NPerts = 1
     SimulationSize = 5
-    grid_resolution = 1 / MaxF
+    grid_resolution = L / MaxF
     MonteCarloPerts = np.random.uniform(Sensor1_dist, Sensor2_dist, (SimulationSize, NPerts))
     RoundedMonteCarloPerts = round_nearest2(MonteCarloPerts, grid_resolution)
     # RoundedMonteCarloPerts = [[5555], [5200], [5700]]
@@ -177,9 +208,10 @@ def main():
                 "Freq-Sensor2": SaveSensor2Freq.tolist(), }
     SuperpositionedData = {"SaveSuperpositioned":SaveSuperpositioned.tolist()}
     pyexcel.isave_book_as(bookdict=SuperpositionedData, dest_file_name=Output_loc[:-5] + "Superpositioned.xlsx")
+    plt.show()
     pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
     pyexcel.free_resources()
     print("File Saved")
-    plt.show()
+
 
 main()

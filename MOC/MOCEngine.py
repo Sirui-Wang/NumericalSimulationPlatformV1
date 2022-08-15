@@ -110,18 +110,19 @@ def analysis(t, decomposed_network, G):
                     G.edges[edge]["U_mat"][-t - 1, -1] = UP
             elif G.edges[edge]["PertType"] == "Impulse" and G.edges[edge]["PertLocation"] == node:
                 """A impulse perturbation is when flow/head changes for 1 time step and resume to no perturbation status"""
+                impulseSize = G.edges[edge]["impulseSize"]
                 if G.graph["time_seq"][t] >= G.edges[edge]["Start Time"] and count == 0:
                     """to avoid python float inaccuracy, used if the start time is larger than run time to speicify when the perturbation is introduced
                     the count variable is to ensure that the impulse is only introduced one time."""
                     if NodeBCType == "Constant flow":
                         # if node is constant Flow BC, then the impulse is introduced as suddently set flow to 0
-                        UP = 0
+                        UP = G.edges[edge]["U_mat"][-1, -1] - impulseSize
                         HP = HA - ((f * UA * abs(UA)) / (4 * 9.81 * r)) * dx - (a / 9.81) * (UP - UA)
                         G.edges[edge]["H_mat"][-t - 1, -1] = HP
                         G.edges[edge]["U_mat"][-t - 1, -1] = UP
                     else:
                         # if node is constant head BC, then the impulse is introduced as suddently set head to 0
-                        HP = 0
+                        HP = G.edges[edge]["H_mat"][-1, -1] - impulseSize
                         UP = UA + (9.81 / a) * (-HP + HA - ((f * UA * abs(UA)) / (4 * 9.81 * r)) * dx)
                         G.edges[edge]["H_mat"][-t - 1, -1] = HP
                         G.edges[edge]["U_mat"][-t - 1, -1] = UP
@@ -234,15 +235,16 @@ def analysis(t, decomposed_network, G):
                     G.edges[edge]["H_mat"][-t - 1, 0] = HP
                     G.edges[edge]["U_mat"][-t - 1, 0] = UP
             elif G.edges[edge]["PertType"] == "Impulse" and G.edges[edge]["PertLocation"] == node:
+                impulseSize = G.edges[edge]["impulseSize"]
                 if G.graph["time_seq"][t] >= G.edges[edge]["Start Time"] and count == 0:
                     if NodeBCType == "Constant flow":
-                        UP = 0
+                        UP = G.edges[edge]["U_mat"][-1, 0] - impulseSize
                         HP = (a / 9.81) * (UP - UB) + HB + ((f * UB * abs(UB)) / (4 * 9.81 * r)) * dx
                         G.edges[edge]["H_mat"][-t - 1, 0] = HP
                         G.edges[edge]["U_mat"][-t - 1, 0] = UP
                     else:
                         # Default is constant reservoir head BC
-                        HP = 0
+                        HP = G.edges[edge]["H_mat"][-1, 0] - impulseSize
                         UP = UB + (9.81 / a) * (HP - HB - ((f * UB * abs(UB)) / (4 * 9.81 * r)) * dx)
                         G.edges[edge]["H_mat"][-t - 1, 0] = HP
                         G.edges[edge]["U_mat"][-t - 1, 0] = UP
@@ -335,27 +337,81 @@ def analysis(t, decomposed_network, G):
                 dx = G.edges[edge]["dx"]
                 Area = np.pi * r ** 2
                 if direction == ["in"]:
-                    A[0, i] = Area
-                    A[i, 0] = 1
-                    A[i, i] = a / 9.81
-                    B[i, 0] = (a / 9.81) * UA + HA - ((f * UA * abs(UA)) / (4 * 9.81 * r)) * dx
-                    mapping[edge] = i
-                    i += 1
+                    if G.edges[edge]["PertType"] == "Impulse" and G.edges[edge]["PertLocation"] == node:
+                        impulseSize = G.edges[edge]["impulseSize"]
+                        if G.graph["time_seq"][t] >= G.edges[edge]["Start Time"] and count == 0:
+                            UP = G.edges[edge]["U_mat"][-1, -1] - impulseSize
+                            B[0,0] = -Area*UP
+                            A = np.delete(A, -1, 0)
+                            A = np.delete(A, -1, 1)
+                            B = np.delete(B, -1, 0)
+                        else:
+                            A[0, i] = -Area
+                            A[i, 0] = -1
+                            A[i, i] = a / 9.81
+                            B[i, 0] = (a / 9.81) * UB - HB - ((f * UB * abs(UB)) / (4 * 9.81 * r)) * dx
+                            mapping[edge] = i
+                            i += 1
+                    else:
+                        A[0, i] = Area
+                        A[i, 0] = 1
+                        A[i, i] = a / 9.81
+                        B[i, 0] = (a / 9.81) * UA + HA - ((f * UA * abs(UA)) / (4 * 9.81 * r)) * dx
+                        mapping[edge] = i
+                        i += 1
                 else:
-                    A[0, i] = -Area
-                    A[i, 0] = -1
-                    A[i, i] = a / 9.81
-                    B[i, 0] = (a / 9.81) * UB - HB - ((f * UB * abs(UB)) / (4 * 9.81 * r)) * dx
-                    mapping[edge] = i
-                    i += 1
+                    if G.edges[edge]["PertType"] == "Impulse" and G.edges[edge]["PertLocation"] == node:
+                        impulseSize = G.edges[edge]["impulseSize"]
+                        if G.graph["time_seq"][t] >= G.edges[edge]["Start Time"] and count == 0:
+                            UP = G.edges[edge]["U_mat"][-1, 0] - impulseSize
+                            B[0,0] = -Area*UP
+                            A = np.delete(A, -1, 0)
+                            A = np.delete(A, -1, 1)
+                            B = np.delete(B, -1, 0)
+                        else:
+                            A[0, i] = -Area
+                            A[i, 0] = -1
+                            A[i, i] = a / 9.81
+                            B[i, 0] = (a / 9.81) * UB - HB - ((f * UB * abs(UB)) / (4 * 9.81 * r)) * dx
+                            mapping[edge] = i
+                            i += 1
+                    else:
+                        A[0, i] = -Area
+                        A[i, 0] = -1
+                        A[i, i] = a / 9.81
+                        B[i, 0] = (a / 9.81) * UB - HB - ((f * UB * abs(UB)) / (4 * 9.81 * r)) * dx
+                        mapping[edge] = i
+                        i += 1
             C = np.linalg.solve(A, B)
             for edge, direction in branch.items():
                 if direction == ["in"]:
-                    G.edges[edge]["H_mat"][-t - 1, -1] = C[0][0]
-                    G.edges[edge]["U_mat"][-t - 1, -1] = C[mapping[edge]][0]
+                    if G.edges[edge]["PertType"] == "Impulse" and G.edges[edge]["PertLocation"] == node:
+                        impulseSize = G.edges[edge]["impulseSize"]
+                        if G.graph["time_seq"][t] >= G.edges[edge]["Start Time"] and count == 0:
+                            UP = G.edges[edge]["U_mat"][-1, -1] - impulseSize
+                            G.edges[edge]["H_mat"][-t - 1, -1] = C[0][0]
+                            G.edges[edge]["U_mat"][-t - 1, -1] = UP
+                            count += 1
+                        else:
+                            G.edges[edge]["H_mat"][-t - 1, -1] = C[0][0]
+                            G.edges[edge]["U_mat"][-t - 1, -1] = C[mapping[edge]][0]
+                    else:
+                        G.edges[edge]["H_mat"][-t - 1, -1] = C[0][0]
+                        G.edges[edge]["U_mat"][-t - 1, -1] = C[mapping[edge]][0]
                 else:
-                    G.edges[edge]["H_mat"][-t - 1, 0] = C[0][0]
-                    G.edges[edge]["U_mat"][-t - 1, 0] = C[mapping[edge]][0]
+                    if G.edges[edge]["PertType"] == "Impulse" and G.edges[edge]["PertLocation"] == node:
+                        impulseSize = G.edges[edge]["impulseSize"]
+                        if G.graph["time_seq"][t] >= G.edges[edge]["Start Time"] and count == 0:
+                            UP = G.edges[edge]["U_mat"][-1, 0] - impulseSize
+                            G.edges[edge]["H_mat"][-t - 1, 0] = C[0][0]
+                            G.edges[edge]["U_mat"][-t - 1, 0] = UP
+                            count += 1
+                        else:
+                            G.edges[edge]["H_mat"][-t - 1, -1] = C[0][0]
+                            G.edges[edge]["U_mat"][-t - 1, -1] = C[mapping[edge]][0]
+                    else:
+                        G.edges[edge]["H_mat"][-t - 1, 0] = C[0][0]
+                        G.edges[edge]["U_mat"][-t - 1, 0] = C[mapping[edge]][0]
     for edge in list(G.edges):
         source, target = edge
         for x in np.arange(1, len(G.edges[edge]["x_range"]) - 1):

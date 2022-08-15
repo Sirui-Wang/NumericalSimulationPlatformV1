@@ -45,6 +45,7 @@ def main(data_dict, progress_bar, ProgressPage):
                 pass
             elif LinkAttributes["PertType"] == "Impulse":
                 G.edges[edge[0], edge[1]]["Start Time"] = float(LinkAttributes["Time"])
+                G.edges[edge[0], edge[1]]["impulseSize"] = float(LinkAttributes["impulseSize"])
                 G.edges[edge[0], edge[1]]["PertLocation"] = LinkAttributes["Location"]
             elif LinkAttributes["PertType"] == "Full Closure":
                 G.edges[edge[0], edge[1]]["Start Time"] = float(LinkAttributes["Time"])

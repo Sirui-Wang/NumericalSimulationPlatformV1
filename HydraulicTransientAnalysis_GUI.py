@@ -348,7 +348,7 @@ def link_MOC_property_field(displayWindow, key="New", HasPert=False):
 def MOC_perturbation_field(passed):
     """modular function to display front end gui to introduce MOC perturbation"""
     displayWindow, PerturbationType, key = passed
-    global PertFrame, Location, FlowRate, Frequency, Amplitude, StartTime
+    global PertFrame, Location, FlowRate, Frequency, Amplitude, StartTime, impulseSize
     if key == "New":
         """When a new edge is created, the following code will be used"""
         try:
@@ -362,8 +362,11 @@ def MOC_perturbation_field(passed):
         if PerturbationType == "Impulse":
             ImpulseFrame = LabelFrame(PertFrame, highlightthickness=0, borderwidth=0)
             Label(ImpulseFrame, text="Time").grid(row=0, column=0, sticky="w")  # impulse time
+            Label(ImpulseFrame, text="Impulse Size").grid(row = 1, column=0, sticky="w")
             StartTime = Entry(ImpulseFrame)
             StartTime.grid(row=0, column=1, sticky="w")  # impulse time entry
+            impulseSize = Entry(ImpulseFrame)
+            impulseSize.grid(row=1, column=1, sticky="w")
             ImpulseFrame.grid(row=1, column=0, columnspan=2, sticky="nsew")
             ImpulseFrame.grid_columnconfigure(0, weight=1)
             PertFrame.grid(row=10, column=0, sticky="ew")
@@ -413,9 +416,13 @@ def MOC_perturbation_field(passed):
         if PerturbationType == "Impulse":
             ImpulseFrame = LabelFrame(PertFrame, highlightthickness=0, borderwidth=0)
             Label(ImpulseFrame, text="Time").grid(row=0, column=0, sticky="w")  # impulse time
+            Label(ImpulseFrame, text="Impulse Size").grid(row = 1, column=0, sticky="w")
             StartTime = Entry(ImpulseFrame)
             StartTime.insert(0, LinksDictionary[key]["Time"])
             StartTime.grid(row=0, column=1, sticky="w")  # impulse time entry
+            impulseSize = Entry(ImpulseFrame)
+            impulseSize.grid(row=1, column=1, sticky="w")
+            impulseSize.insert(0, LinksDictionary[key]["impulseSize"])
             ImpulseFrame.grid(row=1, column=0, columnspan=2, sticky="nsew")
             ImpulseFrame.grid_columnconfigure(0, weight=1)
             PertFrame.grid(row=10, column=0, sticky="ew")
@@ -653,7 +660,7 @@ def drawLink():
         LinksDictionary["{},{}".format(start, end)].update(
             {"PertType": MOCPerturbationTypeVar.get(), "Location": Location.get()})
         if MOCPerturbationTypeVar.get() == "Impulse":
-            LinksDictionary["{},{}".format(start, end)].update({"Time": StartTime.get()})
+            LinksDictionary["{},{}".format(start, end)].update({"Time": StartTime.get(), "impulseSize":impulseSize.get()})
         elif MOCPerturbationTypeVar.get() == "Full Closure":
             LinksDictionary["{},{}".format(start, end)].update({"Time": StartTime.get()})
         elif MOCPerturbationTypeVar.get() == "Controlled Flow":
@@ -718,7 +725,7 @@ def saveLinkEdit(key):
         LinksDictionary["{},{}".format(start, end)].update(
             {"PertType": MOCPerturbationTypeVar.get(), "Location": Location.get()})
         if MOCPerturbationTypeVar.get() == "Impulse":
-            LinksDictionary["{},{}".format(start, end)].update({"Time": StartTime.get()})
+            LinksDictionary["{},{}".format(start, end)].update({"Time": StartTime.get(), "impulseSize":impulseSize.get()})
         elif MOCPerturbationTypeVar.get() == "Full Closure":
             LinksDictionary["{},{}".format(start, end)].update({"Time": StartTime.get()})
         elif MOCPerturbationTypeVar.get() == "Controlled Flow":

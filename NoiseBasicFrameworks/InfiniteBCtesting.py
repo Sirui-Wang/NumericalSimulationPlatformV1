@@ -61,7 +61,8 @@ for i in tqdm(range(1, len(freq_range))):
     c4 = F[1][0]
     c5 = F[1][1]
     c6 = F[1][2]
-    inifiniteBC = False
+    A = (np.pi * D ** 2) / 4  # Area
+    inifiniteBC = True
     if not inifiniteBC:
         EQA = [[-1, c2],
                [0, c5]]
@@ -72,20 +73,30 @@ for i in tqdm(range(1, len(freq_range))):
         H = [0]
         q = [0]
         h = Solution[1]
+    # else:
+    #     EQA = [[-1, c1, 0, c2],
+    #            [0, c4, -1, c5],
+    #            [a/(A*g), 0, -1, 0],
+    #            [0, a/(A*g), 0, -1]]
+    #     EQB = [[-c3],
+    #            [-c6],
+    #            [0],
+    #            [0]]
+    #     Solution = np.linalg.solve(EQA, EQB)
+    #     Q = Solution[0]
+    #     q = Solution[1]
+    #     H = Solution[2]
+    #     h = Solution[3]
     else:
-        EQA = [[-1, c1, 0, c2],
-               [0, c4, -1, c5],
-               [1, 0, -(g / a) * A, 0],
-               [0, 1, 0, -(g / a) * A]]
-        EQB = [[-c3],
-               [-c6],
-               [0],
-               [0]]
+        EQA = [[A*g/a, -(c1*A*g/a)-c2],
+               [1, -(c4*A*g/a)-c5]]
+        EQB = [[c3],
+               [c6],]
         Solution = np.linalg.solve(EQA, EQB)
-        Q = Solution[0]
-        q = Solution[1]
-        H = Solution[2]
-        h = Solution[3]
+        H = Solution[0]
+        h = Solution[1]
+        Q = (A*g/a)*H
+        q = (A*g/a)*h
     downstreamQ = q
     downstreamH = h
     H_freq_response[i][-1]=downstreamH

@@ -5,7 +5,7 @@ from tkinter import filedialog
 import networkx as nx
 import numpy as np
 import pyexcel
-
+from matplotlib import pyplot as plt
 
 def block_diag_selfmade(*arrs):
     """Create a block diagonal matrix from the provided arrays.
@@ -77,7 +77,7 @@ def field_matrix_single(G, source, target, freq):
     F = np.array([[np.cosh(mu * L), (-1 / Zc) * np.sinh(mu * L), 0],
                   [-Zc * np.sinh(mu * L), np.cosh(mu * L), 0],
                   [0, 0, 1]])
-    return F
+    return F, Zc
 
 
 def Reverse_field_matrix_single(G, source, target, freq, length):
@@ -310,22 +310,26 @@ def TMCalculation(data_pack):
             """
             paths, direction = data
             for path in paths:
-                # if path == [("R2", "B")]:
-                #     print("pause")
+                Impedances = np.zeros(2, dtype=complex)
                 U = np.identity(3)
                 for edge in path[-1::-1]:
                     source, target = edge
+                    FieldMatrix, Zc = field_matrix_single(G, source, target, freq)
+                    if edge == path[-1]:
+                        Impedances[-1] = -Zc
+                    elif edge == path[0]:
+                        Impedances[0] = Zc
                     if G.edges[edge]["PertType"] != "":
                         PertLocation = G.edges[edge]["PertLocation"]
                         PertType = G.edges[edge]["PertType"]
                         S = source_matrix(PertType == "Flow")
                         if PertLocation == source:
-                            U = S @ field_matrix_single(G, source, target, freq) @ U
+                            U = S @ FieldMatrix @ U
                         else:
-                            U = field_matrix_single(G, source, target, freq) @ S @ U
+                            U = FieldMatrix @ S @ U
                     else:
-                        U = field_matrix_single(G, source, target, freq) @ U
-                records, A, B = creatingMatrix(U, direction, path, junc, node, records, A, B)
+                        U = FieldMatrix @ U
+                records, A, B = creatingMatrix(U, direction, path, junc, node, records, A, B, Impedances)
         RowIterable, ColIterable, JuncIterable, column2del, h_placed = records
     A = np.delete(A, column2del, 1)
     IndexMap = np.delete(IndexMap, column2del, 0)
@@ -348,17 +352,17 @@ def TMCalculation(data_pack):
                 for edge in edges[-1::-1]:
                     U = np.identity(3)
                     source, target = edge
+                    FieldMatrix, Zc = field_matrix_single(G, source, target, freq)
                     if G.edges[edge]["PertType"] != "":
                         PertLocation = G.edges[edge]["PertLocation"]
                         PertType = G.edges[edge]["PertType"]
                         S = source_matrix(PertType == "Flow")
-                        FieldMatrix = field_matrix_single(G, source, target, freq)
                         if PertLocation == source:
                             U = S @ FieldMatrix @ U
                         elif PertLocation == target:
                             U = FieldMatrix @ S @ U
-                        else:
-                            U = FieldMatrix @ U
+                    else:
+                        U = FieldMatrix @ U
                     C = U @ [[end_node_flow], [end_node_head], [1]]
                     temp_dict = {source: {"flow": C[0][0], "head": C[1][0]},
                                  target: {"flow": end_node_flow, "head": end_node_head}}
@@ -368,7 +372,7 @@ def TMCalculation(data_pack):
     return Result_dict
 
 
-def creatingMatrix(U, direction, path, junc, node, records, A, B):
+def creatingMatrix(U, direction, path, junc, node, records, A, B, Impedances):
     global IndexMap
     RowIterable, ColIterable, JuncIterable, column2del, h_placed = records
     a = U[0][0]
@@ -377,6 +381,8 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B):
     d = U[1][0]
     e = U[1][1]
     f = U[1][2]
+    ZcUp = Impedances[0]
+    ZcDown = Impedances[-1]
     if direction == "upstream":
         # upstream relative to the junction, ie q(1) and h(3) are must have and Q(0) and H(2) are optional depends on boundary condition
         # startNode = path[0][0]
@@ -398,6 +404,31 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B):
                 col_del_index = ColIterable + 3  # remove h (index 3) as this is the upstream of the junc
                 column2del.append(col_del_index)
                 A[RowIterable:RowIterable + 2, h_placed[junc][1]] = A[RowIterable:RowIterable + 2, ColIterable + 3]
+            else:
+                h_placed[junc] = [True, ColIterable + 3]
+            ColIterable += 4
+            ColIterable += 2
+        elif NodeBCType == "Infinite Non-Reflecting":
+            IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
+            IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
+            IndexMap[ColIterable + 2] = "{} head".format(path[0][0])
+            IndexMap[ColIterable + 3] = "{} head".format(path[-1][-1])
+            a_temp = [[-1, a, 0, b],
+                      [0, d, -1, e],
+                      [ZcUp, 0, -1, 0]]
+            b_temp = [[-c],
+                      [-f],
+                      [0]]
+            A[RowIterable:RowIterable + 3, ColIterable:ColIterable + 4] = a_temp
+            B[RowIterable:RowIterable + 3] = b_temp
+            A[-JuncIterable[junc]][ColIterable + 1] = 1  # index of q (junction at the downstream of the conduit) for later use of flow rate control
+            # col_del_index = ColIterable + 0
+            # column2del.append(col_del_index)
+            if h_placed[junc][0]:
+                col_del_index = ColIterable + 3  # remove h (index 3) as this is the upstream of the junc
+                column2del.append(col_del_index)
+                A[RowIterable:RowIterable + 3, h_placed[junc][1]] = A[RowIterable:RowIterable + 3, ColIterable + 3]
+                # A[RowIterable:RowIterable + 2, h_placed[junc][1]] = A[RowIterable:RowIterable + 2, ColIterable + 3]
             else:
                 h_placed[junc] = [True, ColIterable + 3]
             ColIterable += 4
@@ -501,9 +532,31 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B):
                 h_placed[junc] = [True, ColIterable + 2]
             ColIterable += 4
             RowIterable += 2
-            """
-            remember to change all indexes
-            """
+        elif NodeBCType == "Infinite Non-Reflecting":
+            IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
+            IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
+            IndexMap[ColIterable + 2] = "{} head".format(path[0][0])
+            IndexMap[ColIterable + 3] = "{} head".format(path[-1][-1])
+            a_temp = [[-1, 0, 0, b],
+                      [0, 0, -1, e],
+                      [0, ZcDown, 0 , -1]]
+            b_temp = [[-c],
+                      [-f],
+                      [0]]
+            A[RowIterable:RowIterable + 3, ColIterable:ColIterable + 4] = a_temp
+            B[RowIterable:RowIterable + 3] = b_temp
+            A[-JuncIterable[junc]][ColIterable + 0] = -1
+            # col_del_index = ColIterable + 1
+            # column2del.append(col_del_index)
+            if h_placed[junc][0]:
+                col_del_index = ColIterable + 2
+                column2del.append(col_del_index)
+                A[RowIterable:RowIterable + 3, h_placed[junc][1]] = A[RowIterable:RowIterable + 3, ColIterable + 2]
+                # A[RowIterable:RowIterable + 2, h_placed[junc][1]] = A[RowIterable:RowIterable + 2, ColIterable + 2]
+            else:
+                h_placed[junc] = [True, ColIterable + 2]
+            ColIterable += 4
+            RowIterable += 2
         else:
             IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
             IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
@@ -555,10 +608,17 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B):
             b_temp = [[-c], [-f]]
             column2del.append(ColIterable + 0)
             column2del.append(ColIterable + 1)
-        A[RowIterable:RowIterable + 2, ColIterable:ColIterable + 4] = a_temp
-        B[RowIterable:RowIterable + 2] = b_temp
-        A = np.delete(A, 2, 0)
-        B = np.delete(B, 2, 0)
+        elif upBCType == "Infinite Non-Reflecting" and downBCType == "Infinite Non-Reflecting":
+            a_temp = [[-1, a, 0, b],
+                      [0, d, -1, e],
+                      [ZcUp, 0, -1, 0],
+                      [0, ZcDown, 0, -1]]
+            b_temp = [[-c],
+                      [-f],
+                      [0],
+                      [0]]
+        A = a_temp
+        B = b_temp
     records = (RowIterable, ColIterable, JuncIterable, column2del, h_placed)
     return records, A, B
 
@@ -669,6 +729,10 @@ def main(Graph, Envir, progress_bar, ProgressPage):
         SourceQTime = np.real(np.fft.ifft(SourceQfreq, len(SourceQfreq)))
         TargetHTime = np.real(np.fft.ifft(TargetHfreq, len(TargetHfreq)))
         TargetQTime = np.real(np.fft.ifft(TargetQfreq, len(TargetQfreq)))
+        plt.figure("({},{}) {}".format(source, target, "Source"))
+        plt.plot(time, SourceHTime)
+        plt.figure("({},{}) {}".format(source, target, "Target"))
+        plt.plot(time, TargetHTime)
         time_name = "Pipe {0}-{1} Time".format(source, target)
         freq_name = "Pipe {0}-{1} Freq".format(source, target)
         timeHeading = np.array(
@@ -689,3 +753,4 @@ def main(Graph, Envir, progress_bar, ProgressPage):
     ProgressPage.destroy()
     pyexcel.free_resources()
     print("File Saved")
+    plt.show()

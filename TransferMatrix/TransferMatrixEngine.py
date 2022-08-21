@@ -275,7 +275,7 @@ def InitializeSubMatrixes(branches_dict, G):
             if len(path) > 1:
                 subbranches += len(path) - 1
         nCol = subbranches * 4
-        nRow = subbranches * 2 + 1  # this would work for a junction, but not for a simple/ series pipe. for simple/series pipe, nRow should be 2
+        nRow = subbranches * 4  # this would work for a junction, but not for a simple/ series pipe. for simple/series pipe, nRow should be 2
         aa = np.zeros((nRow, nCol), dtype=complex)
         row = 0
         col = 0
@@ -315,7 +315,14 @@ def TMCalculation(data_pack):
                 for edge in path[-1::-1]:
                     source, target = edge
                     FieldMatrix, Zc = field_matrix_single(G, source, target, freq)
-                    if edge == path[-1]:
+                    if direction == "upstream" and len(path) == 1:
+                        Impedances[0] = Zc
+                    elif direction == "downstream" and len(path) == 1:
+                        Impedances[-1] = -Zc
+                    elif direction == "simple" and len(path) == 1:
+                        Impedances[0] = Zc
+                        Impedances[-1] = -Zc
+                    elif edge == path[-1]:
                         Impedances[-1] = -Zc
                     elif edge == path[0]:
                         Impedances[0] = Zc
@@ -331,7 +338,10 @@ def TMCalculation(data_pack):
                         U = FieldMatrix @ U
                 records, A, B = creatingMatrix(U, direction, path, junc, node, records, A, B, Impedances)
         RowIterable, ColIterable, JuncIterable, column2del, h_placed = records
+    rows2del = np.argwhere(np.all(A[..., :] == 0, axis=1))
     A = np.delete(A, column2del, 1)
+    A = np.delete(A, rows2del, 0)
+    B = np.delete(B, rows2del, 0)
     IndexMap = np.delete(IndexMap, column2del, 0)
     Solution = np.linalg.solve(A, B)
     for junc, branches in branches_dict.items():
@@ -407,7 +417,7 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B, Impedances):
             else:
                 h_placed[junc] = [True, ColIterable + 3]
             ColIterable += 4
-            ColIterable += 2
+            RowIterable += 2
         elif NodeBCType == "Infinite Non-Reflecting":
             IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
             IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
@@ -432,7 +442,7 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B, Impedances):
             else:
                 h_placed[junc] = [True, ColIterable + 3]
             ColIterable += 4
-            ColIterable += 2
+            RowIterable += 3
         else:
             IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
             IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
@@ -537,8 +547,8 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B, Impedances):
             IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)
             IndexMap[ColIterable + 2] = "{} head".format(path[0][0])
             IndexMap[ColIterable + 3] = "{} head".format(path[-1][-1])
-            a_temp = [[-1, 0, 0, b],
-                      [0, 0, -1, e],
+            a_temp = [[-1, a, 0, b],
+                      [0, d, -1, e],
                       [0, ZcDown, 0 , -1]]
             b_temp = [[-c],
                       [-f],
@@ -556,7 +566,7 @@ def creatingMatrix(U, direction, path, junc, node, records, A, B, Impedances):
             else:
                 h_placed[junc] = [True, ColIterable + 2]
             ColIterable += 4
-            RowIterable += 2
+            RowIterable += 3
         else:
             IndexMap[ColIterable] = "{} flow, in {}".format(path[0][0], path)
             IndexMap[ColIterable + 1] = "{} flow, in {}".format(path[-1][-1], path)

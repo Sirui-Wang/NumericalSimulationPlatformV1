@@ -52,7 +52,7 @@ def OpenFile():
         global isBCVar
         isBCVar = BooleanVar()
         isBCVar.set(NodesDictionary[node]["isBC"])
-        print(isBCVar.get())
+        # print(isBCVar.get())
         edit_node_menu.add_command(label=node, command=lambda n=node: editNode(n))
     for edge in LinksDictionary.keys():
         """Read saved file and create link"""

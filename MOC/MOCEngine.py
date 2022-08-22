@@ -58,7 +58,7 @@ def node_classification(G):
             classification = "SeriesConnection"
         elif DoF >= 3:
             classification = "BranchConnection"
-        print(node, classification)
+        # print(node, classification)
         G.nodes[node]["classification"] = classification
     return G
 

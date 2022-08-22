@@ -1,6 +1,7 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
+
 
 def FieldMatrix(BasicPipeProperties, L, freq):
     D, a, f, U = BasicPipeProperties
@@ -130,3 +131,5 @@ def main():
 
     plt.show()
     return H_freq_response, H_time_response
+
+main()

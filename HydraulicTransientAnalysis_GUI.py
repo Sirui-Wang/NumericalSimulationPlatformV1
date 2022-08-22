@@ -91,7 +91,7 @@ def OpenFile():
             MultifreqStepEntry.insert(END, EnvirDictionary["df"])
             MultiFreqRangeEntry.delete(0, END)
             MultiFreqRangeEntry.insert(END, EnvirDictionary["MaxFreq"])
-        else:
+        elif EnvirDictionary["FreqMode"] == "SingleFrequency":
             """Single Frequency"""
             FreqEntry.delete(0, END)
             FreqEntry.insert(END, EnvirDictionary["ExcitationFreq"])
@@ -99,6 +99,22 @@ def OpenFile():
             SinglefreqStepEntry.insert(END, EnvirDictionary["df"])
             SingleFreqRangeEntry.delete(0, END)
             SingleFreqRangeEntry.insert(END, EnvirDictionary["MaxFreq"])
+        else:
+            """Randomized Noise"""
+            NoiseFreqStepEntry.delete(0, END)
+            NoiseFreqStepEntry.insert(END, EnvirDictionary["df"])
+            NoiseFreqRangeEntry.delete(0, END)
+            NoiseFreqRangeEntry.insert(END, EnvirDictionary["MaxFreq"])
+            SimSizeEntry.delete(0, END)
+            SimSizeEntry.insert(END, EnvirDictionary["SimSize"])
+            MeanNoiseEntry.delete(0,END)
+            MeanNoiseEntry.insert(END, EnvirDictionary["NoiseMean"])
+            NoiseSTDEntry.delete(0,END)
+            NoiseSTDEntry.insert(END, EnvirDictionary["NoiseSTD"])
+            Sensor1Entry.delete(0,END)
+            Sensor1Entry.insert(END, EnvirDictionary["Sensor1"])
+            Sensor2Entry.delete(0,END)
+            Sensor2Entry.insert(END, EnvirDictionary["Sensor2"])
 
 
 def SaveFile():
@@ -120,10 +136,13 @@ def Refresh_Panel(*args):
     """ Display the correct Environment panel based on environment frequency mode (single frequency / multi frequency)"""
     MultiFrame.grid_forget()
     SingleFrame.grid_forget()
+    NoiseFrame.grid_forget()
     if frequencyModeVar.get() == "MultiFrequency":
         MultiFrame.grid(row=2, column=0, columnspan=4, sticky="ew", padx=20)
-    else:
+    elif frequencyModeVar.get() == "SingleFrequency":
         SingleFrame.grid(row=2, column=0, columnspan=4, sticky="ew", padx=20)
+    else:
+        NoiseFrame.grid(row=2, column=0, columnspan=4, sticky="ew", padx=20)
 
 
 def Refresh_display():
@@ -153,10 +172,16 @@ def saveConfig():
             EnvirDictionary = {}
             EnvirDictionary = {"df": MultifreqStepEntry.get(), "MaxFreq": MultiFreqRangeEntry.get(),
                                "FreqMode": frequencyModeVar.get()}
-        else:
+        elif frequencyModeVar.get() == "SingleFrequency":
             EnvirDictionary = {}
             EnvirDictionary = {"ExcitationFreq": FreqEntry.get(), "df": SinglefreqStepEntry.get(),
                                "MaxFreq": SingleFreqRangeEntry.get(), "FreqMode": frequencyModeVar.get()}
+        else:
+            EnvirDictionary = {"df": NoiseFreqStepEntry.get(), "MaxFreq": NoiseFreqRangeEntry.get(),
+                               "SimSize":SimSizeEntry.get(), "NoiseMean":MeanNoiseEntry.get(),
+                               "NoiseSTD":NoiseSTDEntry.get(), "Sensor1":Sensor1Entry.get(),
+                               "Sensor2":Sensor2Entry.get(),
+                               "FreqMode": frequencyModeVar.get()}
     else:
         EnvirDictionary = {"dt": timestepEntry.get(), "TotalTime": runtimeEntry.get(),
                            "RecordStart": record_startEntry.get(), "RecordEnd": record_endEntry.get()}
@@ -1013,7 +1038,7 @@ SelectionFrame = LabelFrame(TMFrame, borderwidth=0, highlightthickness=0)
 Label(SelectionFrame, text="FrequencyMode").grid(row=0, column=0, sticky="ew")
 frequencyModeVar = StringVar()
 frequencyModeVar.set("MultiFrequency")
-FrequencyModeSelection = OptionMenu(SelectionFrame, frequencyModeVar, "MultiFrequency", "SingleFrequency")
+FrequencyModeSelection = OptionMenu(SelectionFrame, frequencyModeVar, "MultiFrequency", "SingleFrequency", "Randomized Noise")
 FrequencyModeSelection.grid(row=0, column=1, pady=10, padx=10, sticky="ew")
 SelectionFrame.grid(row=1, column=0, columnspan=4, padx=20, sticky="ew")
 SelectionFrame.grid_columnconfigure(0, weight=1)
@@ -1041,6 +1066,33 @@ SingleFreqRangeEntry.grid(row=2, column=1, pady=10, padx=10, columnspan=2, ipadx
 frequencyModeVar.trace("w", Refresh_Panel)
 SingleFrame.grid_columnconfigure(0, weight=1)
 
+
+# Create Frame for Randomized Noise analysis
+NoiseFrame = LabelFrame(TMFrame, borderwidth=0, highlightthickness=0)
+Label(NoiseFrame, text="dfreq = ").grid(row=0, column=0, pady=10, sticky="ew")
+Label(NoiseFrame, text="Max Freq").grid(row=1, column=0, pady=10, sticky="ew")
+Label(NoiseFrame, text="Simulation Size").grid(row=2, column=0, pady=10, sticky="ew")
+Label(NoiseFrame, text="Mean Noise Level").grid(row=3, column=0, pady=10, sticky="ew")
+Label(NoiseFrame, text="Noise Standard Deviation").grid(row=4, column=0, pady=10, sticky="ew")
+Label(NoiseFrame, text="Sensor 1").grid(row=5, column=0, pady=10, sticky="ew")
+Label(NoiseFrame, text="Sensor 2").grid(row=6, column=0, pady=10, sticky="ew")
+NoiseFreqStepEntry = Entry(NoiseFrame)
+NoiseFreqStepEntry.grid(row=0, column=1, pady=10, padx=10, columnspan=2, sticky="WE")
+NoiseFreqRangeEntry = Entry(NoiseFrame)
+NoiseFreqRangeEntry.grid(row=1, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
+SimSizeEntry = Entry(NoiseFrame)
+SimSizeEntry.grid(row=2, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
+MeanNoiseEntry = Entry(NoiseFrame)
+MeanNoiseEntry.grid(row=3, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
+NoiseSTDEntry = Entry(NoiseFrame)
+NoiseSTDEntry.grid(row=4, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
+Sensor1Entry = Entry(NoiseFrame)
+Sensor1Entry.grid(row=5, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
+Sensor2Entry = Entry(NoiseFrame)
+Sensor2Entry.grid(row=6, column=1, pady=10, padx=10, columnspan=2, ipadx=0, sticky="WE")
+frequencyModeVar.trace("w", Refresh_Panel)
+NoiseFrame.grid_columnconfigure(0, weight=1)
+
 # TM save and start analysis
 saveconfigBtn = Button(TMFrame, text="Save Configuration", command=saveConfig)
 saveconfigBtn.grid(row=10, column=0, columnspan=4, pady=(50, 0), sticky="ew")
@@ -1049,7 +1101,7 @@ StartBtn.grid(row=11, column=0, columnspan=4, pady=50, sticky="ew")
 TMFrame.grid_columnconfigure(0, weight=1)
 
 """ Display selected analysis mode entry boxes on screen """
-AnalysisMode.set(False)
+AnalysisMode.set(True)
 if AnalysisMode.get():
     TMFrame.pack(fill=BOTH, expand=1)
     if frequencyModeVar.get() == "MultiFrequency":

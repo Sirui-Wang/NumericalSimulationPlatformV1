@@ -9,7 +9,7 @@ import TransferMatrix.NormalAnalysis as NormalAnalysis
 from TransferMatrix.TMTools import *
 
 
-def main(Graph, Envir, progress_bar, ProgressPage):
+def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     G = Graph
     dirname = os.getcwd()
     extensions = [("Excel File", ".xlsx")]
@@ -21,16 +21,18 @@ def main(Graph, Envir, progress_bar, ProgressPage):
     freq_range = np.arange(0, maxFreq + dFreq, dFreq)
     time = np.arange(0, (1 / dFreq) + (1 / maxFreq), 1 / maxFreq)
     if Envir["FreqMode"] == "Randomized Noise":
+        SaveDict = {}
         MaxFreq = float(Envir["MaxFreq"])
         NumberOfEdges = len(list(G.edges))
         SortedEdges = sorted(list(G.edges))
         SimulationSize = int(Envir["SimSize"])
-        Sensor1Superpositioned = np.zeros(np.shape(freq_range))
-        Sensor2Superpositioned = np.zeros(np.shape(freq_range))
+        Sensor1Superpositioned = np.zeros(len(freq_range)*2-1)
+        Sensor2Superpositioned = np.zeros(len(freq_range)*2-1)
         for Simulation in range(SimulationSize):
+            SubProgressBar["value"] = 0
             SplitedG = RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges)
-            SensorResult = NoiseAnalysis.main(SplitedG, Envir, freq_range)
-            progress_bar["value"] += 100 / SimulationSize
+            SensorResult = NoiseAnalysis.main(SplitedG, Envir, freq_range, SubProgressBar, ProgressPage)
+            MainProgressBar["value"] += 100 / SimulationSize
             ProgressPage.update()
             Sensors = [Envir["Sensor1"], Envir["Sensor2"]]
             HFreqResultS1 = SensorResult[Sensors[0]]["hfreq"]
@@ -38,9 +40,17 @@ def main(Graph, Envir, progress_bar, ProgressPage):
             Noise = np.random.normal(0, 0.1, np.shape(HFreqResultS1))
             Sensor1Time = np.convolve(np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))), Noise)
             Sensor2Time = np.convolve(np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), Noise)
-            print("test")
+            Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1Time)
+            Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2Time)
+        CrossCorrelatedResult = np.correlate(Sensor1Superpositioned, Sensor2Superpositioned, mode="full")
+        CorrelatedTime = np.arange(0, (1 / dFreq) * 4 + (1 / MaxFreq), 1 / MaxFreq)
+        SaveTime = np.column_stack((CorrelatedTime, CrossCorrelatedResult))
+        plt.figure("Correlated Result from Sensor1 and Sensor2")
+        plt.plot(CorrelatedTime, CrossCorrelatedResult)
+        SaveDict["Result"] = SaveTime.tolist()
+        pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
     else:
-        result_dict, all_result_dict = NormalAnalysis.main(Graph, Envir, progress_bar, ProgressPage, dFreq, freq_range)
+        result_dict, all_result_dict = NormalAnalysis.main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range)
         SaveDict = {}
         for edge in G.edges:
             source, target = edge

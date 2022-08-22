@@ -5,7 +5,7 @@ import pyexcel
 from matplotlib import pyplot as plt
 from TransferMatrix.TMTools import *
 
-def TMCalculation(data_pack):
+def TMCalculation(data_pack, SubProgressBar, ProgressPage):
     freq, branches_dict, sub_matrixes = data_pack
     juncs = list(sub_matrixes.keys())
     A = sub_matrixes[juncs[0]]["aa"]
@@ -25,6 +25,8 @@ def TMCalculation(data_pack):
         junc_index += 1
     Result_dict = dict.fromkeys(list(G.edges), {})
     for junc, branches in branches_dict.items():
+        SubProgressBar["value"] += 50 / len(list(branches_dict.keys()))
+        ProgressPage.update()
         records = (RowIterable, ColIterable, JuncIterable, column2del, h_placed, IndexMap)
         for node, data in branches.items():
             """ node here is essentially the end/start node opposite to the junction
@@ -66,6 +68,8 @@ def TMCalculation(data_pack):
     IndexMap = np.delete(IndexMap, column2del, 0)
     Solution = np.linalg.solve(A, B)
     for junc, branches in branches_dict.items():
+        SubProgressBar["value"] += 50 / len(list(branches_dict.keys()))
+        ProgressPage.update()
         for node, path in branches.items():
             path, direction = path
             for edges in path:
@@ -104,7 +108,7 @@ def TMCalculation(data_pack):
 
 
 
-def main(Graph, Envir, progress_bar, ProgressPage, dFreq, freq_range):
+def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range):
     global G
     G = Graph
     G = node_classification(G)
@@ -123,18 +127,19 @@ def main(Graph, Envir, progress_bar, ProgressPage, dFreq, freq_range):
                                            "qfreq": np.zeros(len(freq_range), dtype=complex)}}
     if Envir["FreqMode"] == "MultiFrequency":
         for i in range(1, len(freq_range[1::])):
+            SubProgressBar["value"] = 0
             freq = freq_range[i]
-            progress_bar["value"] += 100 / len(freq_range[1::])
+            MainProgressBar["value"] += 100 / len(freq_range[1::])
             ProgressPage.update()
             data = (freq, branches_dict, sub_matrixes)
-            Solutions = TMCalculation(data)
+            Solutions = TMCalculation(data, SubProgressBar, ProgressPage)
             CalculateAtSensor(G, Solutions, i, freq, result_dict)
             CalculateAllNode(G, Solutions, i, all_result_dict)
     else:
         freq = np.array([float(Envir["ExcitationFreq"])])
         data = (freq, branches_dict, sub_matrixes)
         Solutions = TMCalculation(data)
-        progress_bar["value"] += 100
+        MainProgressBar["value"] += 100
         ProgressPage.update()
         CalculateAtSensor(Solutions, int(freq / dFreq), freq, result_dict)
         CalculateAllNode(Solutions, int(freq / dFreq), all_result_dict)

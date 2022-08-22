@@ -11,7 +11,7 @@ global G
 G = nx.DiGraph()
 
 
-def main(data_dict, progress_bar, ProgressPage):
+def main(data_dict, SubProgressBar, MainProgressBar, ProgressPage):
     """Match GUI backend save dictionary to networkx G"""
     NodesDictionary = data_dict["Nodes"]
     LinksDictionary = data_dict["Links"]
@@ -63,6 +63,6 @@ def main(data_dict, progress_bar, ProgressPage):
                 G.edges[edge[0], edge[1]]["PertLocation"] = LinkAttributes["Location"]
                 G.edges[edge[0], edge[1]]["FlowRate"] = float(LinkAttributes["FlowRate"])
     if AnalysisMode:
-        TMEngine.main(G, EnvirDictionary, progress_bar, ProgressPage)
+        TMEngine.main(G, EnvirDictionary, SubProgressBar, MainProgressBar, ProgressPage)
     else:
-        MOCEngine.main(G, EnvirDictionary, progress_bar, ProgressPage)
+        MOCEngine.main(G, EnvirDictionary, SubProgressBar, MainProgressBar, ProgressPage)

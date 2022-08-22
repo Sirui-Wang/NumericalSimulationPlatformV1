@@ -190,14 +190,20 @@ def saveConfig():
 def startAnalysis():
     """pass all information to a convertion between the GUI and engine to start transient analysis"""
     saveConfig()
-    global Progresses
-    Progresses = LabelFrame(RightFrame, text="Progress", height=20)
-    my_progress = ttk.Progressbar(Progresses, orient=HORIZONTAL, length=400, mode="determinate")
-    my_progress.pack(fill=BOTH, expand=1)
-    Progresses.pack(fill=BOTH)
+    global SubProgresses, MainProgresses
+    Progresses = LabelFrame(RightFrame, text="Progresses", height=50)
+    SubProgresses = LabelFrame(Progresses, text="SubProgress", height=20)
+    MainProgresses = LabelFrame(Progresses,  text="MainProgress", height=20)
+    SubProgressBar = ttk.Progressbar(SubProgresses, orient=HORIZONTAL, length=400, mode="determinate")
+    SubProgressBar.pack(fill=BOTH, expand=1)
+    MainProgressBar = ttk.Progressbar(MainProgresses, orient=HORIZONTAL, length=400, mode="determinate")
+    MainProgressBar.pack(fill=BOTH, expand=1)
+    SubProgresses.pack(fill=BOTH)
+    MainProgresses.pack(fill=BOTH)
+    Progresses.pack(fill=BOTH, expand=1)
     compacted_data = {"Nodes": NodesDictionary, "Links": LinksDictionary, "Environment": EnvirDictionary,
                       "Mode": AnalysisMode.get()}
-    Interface.main(compacted_data, my_progress, Progresses)
+    Interface.main(compacted_data, SubProgressBar, MainProgressBar, Progresses)
 
 
 """Sub Functions - Create, edit, delete network items"""
@@ -1026,9 +1032,9 @@ record_endEntry.grid(row=3, column=3, pady=(10, 0))
 MOCFrame.grid_columnconfigure(0, weight=1)
 # MOC save and start analysis
 saveconfigBtn = Button(MOCFrame, text="Save Configuration", command=saveConfig)
-saveconfigBtn.grid(row=20, column=0, columnspan=4, pady=(50, 0), sticky="ew")
+saveconfigBtn.grid(row=20, column=0, columnspan=4, pady=(10, 0), sticky="ew")
 StartBtn = Button(MOCFrame, text="Start Analysis", command=startAnalysis)
-StartBtn.grid(row=21, column=0, columnspan=4, pady=25, sticky="ew")
+StartBtn.grid(row=21, column=0, columnspan=4, pady=10, sticky="ew")
 
 """Define TransferMatrx Frame layout"""
 Label(TMFrame, text="TM Run Configuration", font=("Helvetica", "24")).grid(row=0, column=0, columnspan=4, pady=10,
@@ -1095,9 +1101,9 @@ NoiseFrame.grid_columnconfigure(0, weight=1)
 
 # TM save and start analysis
 saveconfigBtn = Button(TMFrame, text="Save Configuration", command=saveConfig)
-saveconfigBtn.grid(row=10, column=0, columnspan=4, pady=(50, 0), sticky="ew")
+saveconfigBtn.grid(row=10, column=0, columnspan=4, pady=(10, 0), sticky="ew")
 StartBtn = Button(TMFrame, text="Start Analysis", command=startAnalysis)
-StartBtn.grid(row=11, column=0, columnspan=4, pady=50, sticky="ew")
+StartBtn.grid(row=11, column=0, columnspan=4, pady=10, sticky="ew")
 TMFrame.grid_columnconfigure(0, weight=1)
 
 """ Display selected analysis mode entry boxes on screen """

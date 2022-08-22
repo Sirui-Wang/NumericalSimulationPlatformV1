@@ -112,7 +112,7 @@ def TMCalculation(data_pack):
                 break
 
 
-def main(Graph, Envir, freq_range):
+def main(Graph, Envir, freq_range, SubProgressBar, ProgressPage):
     global G, Sensors_list, SensorResult, i
     G = Graph
     G = node_classification(G)
@@ -126,6 +126,8 @@ def main(Graph, Envir, freq_range):
         SensorResult[sensor] = {"hfreq": np.zeros(len(freq_range), dtype=complex),
                                 "qfreq": np.zeros(len(freq_range), dtype=complex)}
     for i in range(1, len(freq_range[1::])):
+        SubProgressBar["value"] += 100 / len(freq_range[1::])
+        ProgressPage.update()
         freq = freq_range[i]
         data = (freq, branches_dict, sub_matrixes)
         TMCalculation(data)

@@ -126,7 +126,7 @@ def node_classification(G):
             classification = "BranchConnection"
         else:
             classification = "DoF Error"
-        print(node, classification)
+        # print(node, classification)
         G.nodes[node]["classification"] = classification
     return G
 
@@ -631,4 +631,4 @@ def RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges):
     # RandomPertLocationInEdge = 100
     UpstreamLength = RandomPertLocationInEdge
     SplitedG = SplitEdge(UpstreamLength, RandomEdge, copy.deepcopy(G))
-    return SplitedG
+    return SplitedG, RandomEdge, RandomPertLocationInEdge

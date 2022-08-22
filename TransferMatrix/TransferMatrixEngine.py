@@ -30,7 +30,7 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
         Sensor2Superpositioned = np.zeros(len(freq_range)*2-1)
         for Simulation in range(SimulationSize):
             SubProgressBar["value"] = 0
-            SplitedG = RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges)
+            SplitedG, PertEdge, PertLocation = RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges)
             SensorResult = NoiseAnalysis.main(SplitedG, Envir, freq_range, SubProgressBar, ProgressPage)
             MainProgressBar["value"] += 100 / SimulationSize
             ProgressPage.update()
@@ -42,6 +42,11 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
             Sensor2Time = np.convolve(np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), Noise)
             Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1Time)
             Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2Time)
+            del(SplitedG)
+        plt.figure("Pert on {}, {}m from {}".format(PertEdge, PertLocation, PertEdge[0]))
+        plt.plot(time, np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))), label="Sensor at {}".format(Envir["Sensor1"]))
+        plt.plot(time, np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), label="Sensor at {}".format(Envir["Sensor2"]))
+        plt.legend()
         CrossCorrelatedResult = np.correlate(Sensor1Superpositioned, Sensor2Superpositioned, mode="full")
         CorrelatedTime = np.arange(0, (1 / dFreq) * 4 + (1 / MaxFreq), 1 / MaxFreq)
         SaveTime = np.column_stack((CorrelatedTime, CrossCorrelatedResult))

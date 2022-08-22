@@ -1002,7 +1002,7 @@ pw = PanedWindow(bd=2, relief="flat", orient=tkinter.HORIZONTAL)
 LeftFrame = LabelFrame(root, text="Draw network here")
 RightFrame = LabelFrame(root, text="Change run configuration here")
 pw.add(LeftFrame, stretch="always")
-pw.add(RightFrame, width=300 * scale_factor, stretch="never")
+pw.add(RightFrame, width=400 * scale_factor, stretch="never")
 pw.pack(fill=BOTH, expand=True)
 global MOCFrame, TMFrame  # declared global because it will be used in Function: Refresh
 MOCFrame = LabelFrame(RightFrame, borderwidth=0, highlightthickness=0)

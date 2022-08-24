@@ -1,7 +1,17 @@
 import copy
+import pickle
 
 import networkx as nx
 import numpy as np
+
+
+def is_picklable(obj):
+    try:
+        pickle.dumps(obj)
+
+    except pickle.PicklingError:
+        return False
+    return True
 
 
 def block_diag_selfmade(*arrs):

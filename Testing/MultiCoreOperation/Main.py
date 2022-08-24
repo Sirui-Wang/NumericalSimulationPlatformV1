@@ -1,6 +1,5 @@
 import MultiCoreTest
-import NormalForLoop
 
-NormalForLoop.main()
+# NormalForLoop.main()
 
 MultiCoreTest.main()

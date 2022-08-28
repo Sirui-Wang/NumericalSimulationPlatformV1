@@ -1,6 +1,11 @@
 import MultiCoreTest
-import NormalForLoop
+import MPMultiThreading
+import ConFuture
 
-# NormalForLoop.main()
 
-MultiCoreTest.main()
+# MultiCoreTest.main()
+
+
+print("StartUp Process")
+ConFuture.main()
+# MPMultiThreading.main()

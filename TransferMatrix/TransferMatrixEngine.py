@@ -1,18 +1,18 @@
 import os
 import time as timeMod
 from tkinter import filedialog
-from multiprocessing import Pool
 import multiprocessing as mp
 import pyexcel
 from matplotlib import pyplot as plt
-
+from tqdm import tqdm
 import TransferMatrix.NoiseAnalysis as NoiseAnalysis
 import TransferMatrix.NormalAnalysis as NormalAnalysis
 from TransferMatrix.TMTools import *
 
 
 def worker(Simulations, G, MaxFreq, SortedEdges, NumberOfEdges, Envir, freq_range, Sensor1Superpositioned, Sensor2Superpositioned):
-    for Simulation in Simulations:
+    print(f"Process ID: {os.getpid()}")
+    for Simulation in tqdm(Simulations):
         # SubProgressBar["value"] = 0
         SplitedG, PertEdge, PertLocation = RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges)
         # print(is_picklable((SplitedG, Envir, freq_range)))
@@ -54,21 +54,35 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
         Sensor2Superpositioned = np.zeros(len(freq_range) * 2 - 1)
         start_time = timeMod.time()
         """Start MultiProcessing by start multiple processs"""
-        CoreCount = mp.cpu_count() - 4
-        mp.set_start_method("fork")
-        pool = Pool(processes=CoreCount, )
+        CoreCount = 2
+        # mp.set_start_method("fork")
+        pool = mp.Pool(processes=CoreCount)
         ThreadSize = round(SimulationSize/CoreCount)
         NThreads = range(0, SimulationSize, ThreadSize)
-        for i in range(0, CoreCount-1):
-            p = pool.apply_async(worker, (Simulations[NThreads[i]:NThreads[i+1]], G, MaxFreq, SortedEdges, NumberOfEdges, Envir, freq_range, Sensor1Superpositioned, Sensor2Superpositioned))
-            Sensor1MPResult, Sensor2MPResult = p.get()
-            Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1MPResult)
-            Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2MPResult)
-        p = pool.apply_async(worker, (Simulations[NThreads[i+1]:], G, MaxFreq, SortedEdges, NumberOfEdges, Envir, freq_range,Sensor1Superpositioned, Sensor2Superpositioned))
-        Sensor1MPResult, Sensor2MPResult = p.get()
+        # for i in range(0, CoreCount-1):
+        #     p = pool.apply_async(worker, (Simulations[NThreads[i]:NThreads[i+1]], G, MaxFreq, SortedEdges, NumberOfEdges, Envir, freq_range, Sensor1Superpositioned, Sensor2Superpositioned))
+        #     Sensor1MPResult, Sensor2MPResult = p.get()
+        #     Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1MPResult)
+        #     Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2MPResult)
+        # p = pool.apply_async(worker, (Simulations[NThreads[i+1]:], G, MaxFreq, SortedEdges, NumberOfEdges, Envir, freq_range,Sensor1Superpositioned, Sensor2Superpositioned))
+        # Sensor1MPResult, Sensor2MPResult = p.get()
+        input = []
+        for i in range(0, CoreCount - 1):
+            input.append((Simulations[NThreads[i]:NThreads[i + 1]], G, MaxFreq, SortedEdges, NumberOfEdges, Envir,
+                          freq_range, Sensor1Superpositioned, Sensor2Superpositioned))
+        # pool.starmap(worker, input)
+        results = pool.starmap(worker, input)
+        Sensor1MPResult = np.zeros(len(freq_range)*2-1)
+        Sensor2MPResult = np.zeros(len(freq_range)*2-1)
+        for Sensor1MPResults, Sensor2MPResults in results:
+            print(Sensor1MPResults)
+            print(Sensor2MPResults)
+            Sensor1MPResult = np.add(Sensor1MPResult, Sensor1MPResults)
+            Sensor2MPResult = np.add(Sensor2MPResult, Sensor2MPResults)
+
         Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1MPResult)
         Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2MPResult)
-        print("--- %s seconds ---" % (time.time() - start_time))
+        print("--- %s seconds ---" % (timeMod.time() - start_time))
         # plt.figure("Pert on {}, {}m from {}".format(PertEdge, PertLocation, PertEdge[0]))
         # plt.plot(time, np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))), label="Sensor at {}".format(Envir["Sensor1"]))
         # plt.plot(time, np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), label="Sensor at {}".format(Envir["Sensor2"]))
@@ -123,9 +137,3 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     print("File Saved")
     plt.show()
 
-
-if __name__ == '__main__':
-    main()
-    print("yes2")
-else:
-    print("No2")

@@ -1,5 +1,5 @@
 from TransferMatrix.TMTools import *
-
+from tqdm import tqdm
 
 def TMCalculation(data_pack):
     global SensorResult, i
@@ -125,7 +125,7 @@ def main(Graph, Envir, freq_range): #, SubProgressBar, ProgressPage):
     for sensor in Sensors_list:
         SensorResult[sensor] = {"hfreq": np.zeros(len(freq_range), dtype=complex),
                                 "qfreq": np.zeros(len(freq_range), dtype=complex)}
-    for i in range(1, len(freq_range[1::])):
+    for i in tqdm(range(1, len(freq_range[1::]))):
         # SubProgressBar["value"] += 100 / len(freq_range[1::])
         # ProgressPage.update()
         freq = freq_range[i]

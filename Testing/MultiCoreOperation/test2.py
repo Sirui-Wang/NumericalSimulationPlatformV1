@@ -1,30 +1,27 @@
-import multiprocessing
-import os
-import time
+# SuperFastPython.com
+# example of parallel map() with the process pool
+from multiprocessing.pool import Pool
+from random import random
+from time import sleep
 
 
-def task_sleep(sleep_duration, task_number):
-    time.sleep(sleep_duration)
-    print(f"Task {task_number} done (slept for {sleep_duration}s)! "f"Process ID: {os.getpid()} "f"time: {time.ctime(time.time())}\n")
+# task executed in a worker process
+def task(identifier):
+    # generate a value
+    value = random()
+    # report a message
+    print(f'Task {identifier} executing with {value}', flush=True)
+    # block for a moment
+    sleep(value)
+    # return the generated value
+    return value
 
-    return task_number
 
-def multi_processing_startmap():
-    time_start = time.time()
-
-    # Create pool of workers
-    pool = multiprocessing.Pool(3)
-
-    tasks=[(1,i) for i in [1,2,3,4,5]]
-    # Map pool of workers to process
-    a=pool.starmap(func=task_sleep, iterable=tasks)
-    print(a)
-    # Wait until workers complete execution
-    # process pool CAN closed automatically
-    pool.close()
-
-    time_end = time.time()
-    print(f"Time elapsed: {round(time_end - time_start, 2)}s")
-
-if __name__ == "__main__":
-    multi_processing_startmap()
+# protect the entry point
+if __name__ == '__main__':
+    # create and configure the process pool
+    with Pool(processes=2) as pool:
+        # execute tasks in order
+        for result in pool.map(task, range(100)):
+            print(f'Got result: {result}', flush=True)
+    # process pool is closed automatically

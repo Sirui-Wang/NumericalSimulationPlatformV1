@@ -56,7 +56,7 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
         Sensor2Superpositioned = np.zeros(len(freq_range) * 2 - 1)
         start_time = time.time()
         """Start MultiProcessing by start multiple processs"""
-        CoreCount = 2
+        CoreCount = 3
         pool = mp.Pool(processes=CoreCount)
         ThreadSize = round(SimulationSize / CoreCount)
         NThreads = range(0, SimulationSize, ThreadSize)
@@ -72,8 +72,8 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
         results = pool.starmap(worker, input)
         Sensor1MPResult = np.zeros(len(freq_range) * 2 - 1)
         Sensor2MPResult = np.zeros(len(freq_range) * 2 - 1)
-        pool.close
-        pool.join()
+        # pool.close
+        # pool.join()
         for Sensor1MPResults, Sensor2MPResults in results:
             Sensor1MPResult = np.add(Sensor1MPResult, Sensor1MPResults)
             Sensor2MPResult = np.add(Sensor2MPResult, Sensor2MPResults)
@@ -81,7 +81,7 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
         Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1MPResult)
         Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2MPResult)
         print("--- %s seconds ---" % (time.time() - start_time))
-        CrossCorrelatedResult = np.correlate(Sensor1Superpositioned, Sensor2Superpositioned, mode="same")
+        CrossCorrelatedResult = np.correlate(Sensor1Superpositioned, Sensor2Superpositioned, mode="full")
         CorrelatedTime = np.arange(0, (1 / dFreq) * 4 + (1 / MaxFreq), 1 / MaxFreq)
         SaveTime = np.column_stack((CorrelatedTime, CrossCorrelatedResult))
         plt.figure("Correlated Result from Sensor1 and Sensor2")

@@ -65,9 +65,9 @@ def main(data_dict, SubProgressBar, MainProgressBar, ProgressPage):
                 G.edges[edge[0], edge[1]]["Start Time"] = float(LinkAttributes["Time"])
                 G.edges[edge[0], edge[1]]["PertLocation"] = LinkAttributes["Location"]
                 G.edges[edge[0], edge[1]]["FlowRate"] = float(LinkAttributes["FlowRate"])
-    MultiProcessingEnabled = False
+    MultiProcessingEnabled = True
     if AnalysisMode:
-        if MultiProcessingEnabled == False:
+        if MultiProcessingEnabled:
             MPTMEngine.main(G, EnvirDictionary, SubProgressBar, MainProgressBar, ProgressPage)
         else:
             SPTMEngine.main(G, EnvirDictionary, SubProgressBar, MainProgressBar, ProgressPage)

@@ -1,8 +1,3 @@
-
-import os
-from tkinter import filedialog
-import pyexcel
-from matplotlib import pyplot as plt
 from TransferMatrix.TMTools import *
 
 def TMCalculation(data_pack, SubProgressBar, ProgressPage):

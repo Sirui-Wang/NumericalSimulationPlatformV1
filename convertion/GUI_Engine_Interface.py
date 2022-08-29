@@ -1,7 +1,8 @@
 import networkx as nx
 
 import MOC.MOCEngine as MOCEngine
-import TransferMatrix.TransferMatrixEngine as TMEngine
+import TransferMatrix.TransferMatrixEngine as MPTMEngine
+import TransferMatrix_SingleProcessBackUp.TransferMatrixEngine as SPTMEngine
 
 # from TransferMatrix.TransferMatrixEngine import main as TMEngine
 
@@ -64,7 +65,11 @@ def main(data_dict, SubProgressBar, MainProgressBar, ProgressPage):
                 G.edges[edge[0], edge[1]]["Start Time"] = float(LinkAttributes["Time"])
                 G.edges[edge[0], edge[1]]["PertLocation"] = LinkAttributes["Location"]
                 G.edges[edge[0], edge[1]]["FlowRate"] = float(LinkAttributes["FlowRate"])
+    MultiProcessingEnabled = True
     if AnalysisMode:
-        TMEngine.main(G, EnvirDictionary, SubProgressBar, MainProgressBar, ProgressPage)
+        if MultiProcessingEnabled == True:
+            MPTMEngine.main(G, EnvirDictionary, SubProgressBar, MainProgressBar, ProgressPage)
+        else:
+            SPTMEngine.main(G, EnvirDictionary, SubProgressBar, MainProgressBar, ProgressPage)
     else:
         MOCEngine.main(G, EnvirDictionary, SubProgressBar, MainProgressBar, ProgressPage)

@@ -1,5 +1,5 @@
 import os
-import time as timeMod
+import time
 from tkinter import filedialog
 
 import pyexcel
@@ -20,7 +20,7 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     dFreq = float(Envir["df"])
     maxFreq = int(Envir["MaxFreq"])
     freq_range = np.arange(0, maxFreq + dFreq, dFreq)
-    time = np.arange(0, (1 / dFreq) + (1 / maxFreq), 1 / maxFreq)
+    time_range = np.arange(0, (1 / dFreq) + (1 / maxFreq), 1 / maxFreq)
     if Envir["FreqMode"] == "Randomized Noise":
         SaveDict = {}
         MaxFreq = float(Envir["MaxFreq"])
@@ -29,12 +29,12 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
         SimulationSize = int(Envir["SimSize"])
         Sensor1Superpositioned = np.zeros(len(freq_range)*2-1)
         Sensor2Superpositioned = np.zeros(len(freq_range) * 2 - 1)
-        start_time = timeMod.time()
+        start_time = time.time()
         for Simulation in range(SimulationSize):
             SubProgressBar["value"] = 0
             SplitedG, PertEdge, PertLocation = RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges)
-            print(is_picklable((SplitedG, Envir, freq_range)))
-            SensorResult = NoiseAnalysis.main(SplitedG, Envir, freq_range, SubProgressBar, ProgressPage)
+            # print(is_picklable((SplitedG, Envir, freq_range)))
+            SensorResult = NoiseAnalysis.main(SplitedG, Envir, freq_range)  # , SubProgressBar, ProgressPage)
             MainProgressBar["value"] += 100 / SimulationSize
             ProgressPage.update()
             Sensors = [Envir["Sensor1"], Envir["Sensor2"]]
@@ -45,11 +45,13 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
             Sensor2Time = np.convolve(np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), Noise)
             Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1Time)
             Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2Time)
-            del(SplitedG)
+            del (SplitedG)
         print("--- %s seconds ---" % (time.time() - start_time))
         plt.figure("Pert on {}, {}m from {}".format(PertEdge, PertLocation, PertEdge[0]))
-        plt.plot(time, np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))), label="Sensor at {}".format(Envir["Sensor1"]))
-        plt.plot(time, np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), label="Sensor at {}".format(Envir["Sensor2"]))
+        plt.plot(time_range, np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))),
+                 label="Sensor at {}".format(Envir["Sensor1"]))
+        plt.plot(time_range, np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))),
+                 label="Sensor at {}".format(Envir["Sensor2"]))
         plt.legend()
         CrossCorrelatedResult = np.correlate(Sensor1Superpositioned, Sensor2Superpositioned, mode="full")
         CorrelatedTime = np.arange(0, (1 / dFreq) * 4 + (1 / MaxFreq), 1 / MaxFreq)
@@ -76,18 +78,20 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
             TargetHTime = np.real(np.fft.ifft(TargetHfreq, len(TargetHfreq)))
             TargetQTime = np.real(np.fft.ifft(TargetQfreq, len(TargetQfreq)))
             plt.figure("({},{}) {}".format(source, target, "Source"))
-            plt.plot(time, SourceHTime)
+            plt.plot(time_range, SourceHTime)
             plt.figure("({},{}) {}".format(source, target, "Target"))
-            plt.plot(time, TargetHTime)
+            plt.plot(time_range, TargetHTime)
             time_name = "Pipe {0}-{1} Time".format(source, target)
             freq_name = "Pipe {0}-{1} Freq".format(source, target)
             timeHeading = np.array(
                 ["Time", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor", "Flow Sensor",
                  "Head Target({})".format(target), "Flow Target({})".format(target)])
             freqHeading = np.array(
-                ["Freq", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor", "Flow Sensor",
+                ["Freq", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor",
+                 "Flow Sensor",
                  "Head Target({})".format(target), "Flow Target({})".format(target)])
-            SaveTime = np.column_stack((time, SourceHTime, SourceQTime, SensorHTime, SensorQTime, TargetHTime, TargetQTime))
+            SaveTime = np.column_stack(
+                (time_range, SourceHTime, SourceQTime, SensorHTime, SensorQTime, TargetHTime, TargetQTime))
             SaveFreq = np.column_stack(
                 (freq_range, abs(SourceHfreq), abs(SourceQfreq), abs(SensorHfreq), abs(SensorQfreq), abs(TargetHfreq),
                  abs(TargetQfreq)))
@@ -100,10 +104,3 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     pyexcel.free_resources()
     print("File Saved")
     plt.show()
-
-
-if __name__ == '__main__':
-    main()
-    print("yes2")
-else:
-    print("No2")

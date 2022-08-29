@@ -1,8 +1,3 @@
-import MultiCoreTest
-import MPMultiThreading
-import ConFuture
-import test2
-
 # MultiCoreTest.main()
 
 if __name__ == '__main__':

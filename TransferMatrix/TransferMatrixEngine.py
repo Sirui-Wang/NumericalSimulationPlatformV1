@@ -61,20 +61,17 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
         Sensors = [Envir["Sensor1"], Envir["Sensor2"]]
         SensorA = Sensors[0]
         SensorB = Sensors[1]
-        timecanbesaved = 0
         with mp.Pool(processes=CoreCount, initializer=init_worker,
                      initargs=((G, MaxFreq, freq_range, NumberOfEdges, Envir, SortedEdges),)) as pool:
             for result in tqdm(pool.imap_unordered(worker, Simulations, chunksize=chunksize), total=SimulationSize):
-                starttimeB = time.time()
                 Noise = np.random.normal(0, 0.1, np.shape(freq_range))
-                # track_job(result)
                 HFreqResultS1, HFreqResultS2 = result
                 Sensor1Time = np.convolve(np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))), Noise, mode="same")
                 Sensor2Time = np.convolve(np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), Noise, mode="same")
                 Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1Time)
                 Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2Time)
-                timecanbesaved += (time.time() - starttimeB)
-        print(timecanbesaved)
+                MainProgressBar["value"] += 100 / SimulationSize
+                ProgressPage.update()
         print("--- %s seconds ---" % (time.time() - start_time))
         CrossCorrelatedResult = np.correlate(Sensor1Superpositioned, Sensor2Superpositioned, mode="same")
         CorrelatedTime = np.arange(0, (1 / dFreq) + (1 / MaxFreq), 1 / MaxFreq)

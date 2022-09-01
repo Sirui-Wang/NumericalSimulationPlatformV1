@@ -1,0 +1,13 @@
+UI improvement needed
+1. TkinterDnD, Drag and Drop
+2. click and select object to edit/remove object
+3. right click bring up menu, changes depends what is selected
+4. group select and edit
+5. batch create
+6. enable refresh to run the new simulation after the previous one has failed or finished
+
+Core improvement needed
+1. Investigate ways to further increase efficiency and run speed
+2. Investigate the benefit of using class and implement class.
+
+

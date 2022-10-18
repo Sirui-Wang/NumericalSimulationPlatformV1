@@ -630,7 +630,9 @@ def SplitEdge(UpstreamLength, Edge, SplitedG):
     return SplitedG
 
 
-def RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges):
+def RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges, randomseed):
+    np.random.seed(
+        randomseed)  # Because multiprocess.pool.imap_unordered is unordered, use simulationID as random seed to generate random value such that the result is reproducible
     RandomPipeSection = np.random.randint(0, NumberOfEdges, dtype=int)
     RandomEdge = SortedEdges[RandomPipeSection]
     PipeLength = G.edges[RandomEdge]["length"]
@@ -638,7 +640,6 @@ def RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges):
     UpStreamLimit = GridResolution
     DownstreamLimit = PipeLength - GridResolution
     RandomPertLocationInEdge = round_nearest2(np.random.uniform(UpStreamLimit, DownstreamLimit), GridResolution)
-    # RandomPertLocationInEdge = 100
     UpstreamLength = RandomPertLocationInEdge
     SplitedG = SplitEdge(UpstreamLength, RandomEdge, copy.deepcopy(G))
     return SplitedG, RandomEdge, RandomPertLocationInEdge

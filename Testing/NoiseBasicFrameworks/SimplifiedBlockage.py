@@ -30,7 +30,7 @@ def insertSource(SourceLoc, PipePD,Sensor1_Loc, Sensor2_Loc):
     if index-1 <= Sensor1Seg:
         Sensor1Seg +=1
         Sensor1_Loc = (Sensor1Seg, Loc1)
-    if index <= Sensor2Seg:
+    if index-1 <= Sensor2Seg:
         Sensor2Seg +=1
         Sensor2_Loc = (Sensor2Seg, Loc2)
     return PipePD, Sensor1_Loc, Sensor2_Loc
@@ -134,8 +134,8 @@ def analysis(PipePD, Freq_range,Sensor1_Loc, Sensor2_Loc):
 def worker(SourceLoc):
     global PipePD, Freq_range,time, Sensor1_Loc, Sensor2_Loc, Sensor1Superpositions, Sensor2Superpositions
     # SourceLoc = 110
-    NewPipePD, Sensor1_Loc, Sensor2_Loc = insertSource(SourceLoc, PipePD.copy(deep=True), Sensor1_Loc, Sensor2_Loc)
-    Sensor1Head, Sensor2Head = analysis(NewPipePD, Freq_range,Sensor1_Loc,Sensor2_Loc)
+    NewPipePD, New_Sensor1_Loc, New_Sensor2_Loc = insertSource(SourceLoc, PipePD.copy(deep=True), Sensor1_Loc, Sensor2_Loc)
+    Sensor1Head, Sensor2Head = analysis(NewPipePD, Freq_range,New_Sensor1_Loc,New_Sensor2_Loc)
     Noise = np.random.normal(0, 1, np.shape(Sensor1Head))
     Sensor1Time = np.convolve(np.real(np.fft.ifft(Sensor1Head, len(Sensor1Head))), Noise, mode="same")
     Sensor2Time = np.convolve(np.real(np.fft.ifft(Sensor2Head, len(Sensor2Head))), Noise, mode="same")
@@ -175,9 +175,9 @@ def main():
     Freq_range = np.arange(0, MaxF + df, df)
     # Critical component location (distance from upstream)
     BaseSensor1_Loc = (0,-1)
-    BaseSensor2_Loc = (4,0)
-    SimulationSizeBYDSensors = 1000
-    SimulationSizeBTWSensors = 1000
+    BaseSensor2_Loc = (3,0)
+    SimulationSizeBYDSensors = 200
+    SimulationSizeBTWSensors = 200
     SourcesBYDSensor1 = np.random.uniform(0, 250, SimulationSizeBYDSensors)
     SourcesBYDSensor2 = np.random.uniform(850, 1100, SimulationSizeBYDSensors)
     SourcesBTWSensors = np.random.uniform(250, 850, SimulationSizeBTWSensors)
@@ -186,8 +186,8 @@ def main():
     time = np.arange(0, (1 / df)  + (1 / MaxF), 1 / MaxF)
     Sensor1Superpositions = np.zeros(np.shape(time))
     Sensor2Superpositions = np.zeros(np.shape(time))
-    CoreCount = 6
-    chunksize = 10
+    CoreCount = 4
+    chunksize = 5
     with mp.Pool(processes=CoreCount, initializer=init_worker, initargs=((PipePD.copy(deep=True), Freq_range, time, BaseSensor1_Loc, BaseSensor2_Loc, Sensor1Superpositions, Sensor2Superpositions),)) as pool:
         for result in tqdm(pool.imap(worker, CombinedSourceLocation, chunksize=chunksize), total=len(CombinedSourceLocation)):
             Sensor1Superpositions ,Sensor2Superpositions, Sensor1Head, Sensor2Head = result

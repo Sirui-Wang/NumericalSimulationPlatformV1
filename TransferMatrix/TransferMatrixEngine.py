@@ -66,8 +66,8 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
         Sensor1Superpositioned_verify = np.zeros(len(freq_range))  # * 2 - 1)
         Sensor2Superpositioned_verify = np.zeros(len(freq_range))  # * 2 - 1)
         """Start MultiProcessing by start multiple processs"""
-        CoreCount = 10
-        chunksize = 5  # round(SimulationSize/CoreCount/20)
+        CoreCount = 12
+        chunksize = 10  # round(SimulationSize/CoreCount/20)
         Sensors = [Envir["Sensor1"], Envir["Sensor2"]]
         SensorA = Sensors[0]
         SensorB = Sensors[1]

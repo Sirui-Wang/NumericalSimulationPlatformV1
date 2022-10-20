@@ -1,38 +1,47 @@
-import os
-from tkinter import filedialog
-from tqdm import tqdm
 import multiprocessing as mp
+import os
+import time as TimeMod
+from tkinter import filedialog
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pyexcel
-import time as TimeMod
+from tqdm import tqdm
 
 S = [[1, 0, 0],
      [0, 1, 1],
      [0, 0, 1]]
+
 isinifiniteBC = True
 
 def insertSource(SourceLoc, PipePD,Sensor1_Loc, Sensor2_Loc):
     Sensor1Seg, Loc1 = Sensor1_Loc
     Sensor2Seg, Loc2 = Sensor2_Loc
     index = 0
+    SourceLoc = 10
     while sum(PipePD["L"][0:index]) < SourceLoc:
         index += 1
     DistBF = SourceLoc - sum(PipePD["L"][0:index - 1])
     DistAFT = sum(PipePD["L"][0:index]) - SourceLoc
     PipePD["L"][index-1] = DistBF
     NewRow = np.array(PipePD.iloc[index-1])
-    InsertPD = pd.DataFrame({"L": NewRow[0], "D": NewRow[1], "A": NewRow[2],"a": NewRow[3], "f": NewRow[4], "U": NewRow[5],"Q0":NewRow[6], "S":1},
-                            index=[index-1])
-    PipePD = pd.concat([PipePD.iloc[:index-1], InsertPD, PipePD.iloc[index-1:]]).reset_index(drop=True)
+    InsertPD = pd.DataFrame(
+        {"L": NewRow[0], "D": NewRow[1], "A": NewRow[2], "a": NewRow[3], "f": NewRow[4], "U": NewRow[5],
+         "Q0": NewRow[6], "S": 1},
+        index=[index - 1])
+    PipePD = pd.concat([PipePD.iloc[:index - 1], InsertPD, PipePD.iloc[index - 1:]]).reset_index(drop=True)
     PipePD["L"][index] = DistAFT
-    if index-1 <= Sensor1Seg:
-        Sensor1Seg +=1
+    if index - 1 <= Sensor1Seg:
+        Sensor1Seg += 1
         Sensor1_Loc = (Sensor1Seg, Loc1)
-    if index-1 <= Sensor2Seg:
-        Sensor2Seg +=1
+    if index <= Sensor2Seg:
+        Sensor2Seg += 1
         Sensor2_Loc = (Sensor2Seg, Loc2)
+    print(SourceLoc)
+    print(PipePD)
+    print(Sensor1_Loc)
+    print(Sensor2_Loc)
     return PipePD, Sensor1_Loc, Sensor2_Loc
 
 
@@ -82,7 +91,7 @@ def analysis(PipePD, Freq_range,Sensor1_Loc, Sensor2_Loc):
     global S, isinifiniteBC
     Sensor1_Head_fResponse = np.zeros((len(Freq_range)), dtype=complex)
     Sensor2_Head_fResponse = np.zeros((len(Freq_range)), dtype=complex)
-    for i in range(1, len(Freq_range[1::])):
+    for i in tqdm(range(1, len(Freq_range))):
         freq = Freq_range[i]
         U, Zc = FieldMatrix(PipePD.iloc[-1], freq)
         Zcs = [Zc]
@@ -132,15 +141,16 @@ def analysis(PipePD, Freq_range,Sensor1_Loc, Sensor2_Loc):
 
 
 def worker(SourceLoc):
-    global PipePD, Freq_range,time, Sensor1_Loc, Sensor2_Loc, Sensor1Superpositions, Sensor2Superpositions
+    global PipePD, Freq_range, time, Sensor1_Loc, Sensor2_Loc, Sensor1Superpositions, Sensor2Superpositions
     # SourceLoc = 110
-    NewPipePD, New_Sensor1_Loc, New_Sensor2_Loc = insertSource(SourceLoc, PipePD.copy(deep=True), Sensor1_Loc, Sensor2_Loc)
-    Sensor1Head, Sensor2Head = analysis(NewPipePD, Freq_range,New_Sensor1_Loc,New_Sensor2_Loc)
-    Noise = np.random.normal(0, 1, np.shape(Sensor1Head))
+    NewPipePD, New_Sensor1_Loc, New_Sensor2_Loc = insertSource(SourceLoc, PipePD.copy(deep=True), Sensor1_Loc,
+                                                               Sensor2_Loc)
+    Sensor1Head, Sensor2Head = analysis(NewPipePD, Freq_range, New_Sensor1_Loc, New_Sensor2_Loc)
+    Noise = np.random.normal(0, 0.1, np.shape(Sensor1Head))
     Sensor1Time = np.convolve(np.real(np.fft.ifft(Sensor1Head, len(Sensor1Head))), Noise, mode="same")
     Sensor2Time = np.convolve(np.real(np.fft.ifft(Sensor2Head, len(Sensor2Head))), Noise, mode="same")
-    Sensor1Superpositions = np.add(Sensor1Superpositions,Sensor1Time)
-    Sensor2Superpositions = np.add(Sensor2Superpositions,Sensor2Time)
+    Sensor1Superpositions = np.add(Sensor1Superpositions, Sensor1Time)
+    Sensor2Superpositions = np.add(Sensor2Superpositions, Sensor2Time)
     return Sensor1Superpositions, Sensor2Superpositions, Sensor1Head, Sensor2Head
 
 
@@ -168,29 +178,34 @@ def main():
     Sections_Q0 = Sections_A * Sections_U  # initial flow rate
     # Sections_ZC = np.zeros(len(Sections),dtype=complex)
     Sections_S = np.zeros(len(Sections))
-    Data = np.column_stack((Sections_L, Sections_D, Sections_A, Sections_a, Sections_f, Sections_U, Sections_Q0, Sections_S))
+    Data = np.column_stack(
+        (Sections_L, Sections_D, Sections_A, Sections_a, Sections_f, Sections_U, Sections_Q0, Sections_S))
     PipePD = pd.DataFrame(data=Data, index=Sections, columns=["L", "D", "A", "a", "f", "U", "Q0", "S"])
     df = 0.0025
-    MaxF = 100
+    MaxF = 500
     Freq_range = np.arange(0, MaxF + df, df)
     # Critical component location (distance from upstream)
-    BaseSensor1_Loc = (0,-1)
-    BaseSensor2_Loc = (3,0)
-    SimulationSizeBYDSensors = 200
-    SimulationSizeBTWSensors = 200
+    BaseSensor1_Loc = (0, -1)
+    BaseSensor2_Loc = (4, 0)
+    SimulationSizeBYDSensors = 0
+    SimulationSizeBTWSensors = 1
     SourcesBYDSensor1 = np.random.uniform(0, 250, SimulationSizeBYDSensors)
     SourcesBYDSensor2 = np.random.uniform(850, 1100, SimulationSizeBYDSensors)
     SourcesBTWSensors = np.random.uniform(250, 850, SimulationSizeBTWSensors)
     CombinedSourceLocation = np.concatenate((SourcesBYDSensor1, SourcesBYDSensor2, SourcesBTWSensors), axis=None)
     global time
-    time = np.arange(0, (1 / df)  + (1 / MaxF), 1 / MaxF)
+    time = np.arange(0, (1 / df) + (1 / MaxF), 1 / MaxF)
     Sensor1Superpositions = np.zeros(np.shape(time))
     Sensor2Superpositions = np.zeros(np.shape(time))
-    CoreCount = 4
-    chunksize = 5
-    with mp.Pool(processes=CoreCount, initializer=init_worker, initargs=((PipePD.copy(deep=True), Freq_range, time, BaseSensor1_Loc, BaseSensor2_Loc, Sensor1Superpositions, Sensor2Superpositions),)) as pool:
-        for result in tqdm(pool.imap(worker, CombinedSourceLocation, chunksize=chunksize), total=len(CombinedSourceLocation)):
-            Sensor1Superpositions ,Sensor2Superpositions, Sensor1Head, Sensor2Head = result
+    CoreCount = 1
+    chunksize = 1
+    with mp.Pool(processes=CoreCount, initializer=init_worker, initargs=((PipePD.copy(deep=True), Freq_range, time,
+                                                                          BaseSensor1_Loc, BaseSensor2_Loc,
+                                                                          Sensor1Superpositions,
+                                                                          Sensor2Superpositions),)) as pool:
+        for result in tqdm(pool.imap(worker, CombinedSourceLocation, chunksize=chunksize),
+                           total=len(CombinedSourceLocation)):
+            Sensor1Superpositions, Sensor2Superpositions, Sensor1Head, Sensor2Head = result
     # for SourceLoc in CombinedSourceLocation:
     #     NewPipePD, Sensor1_Loc, Sensor2_Loc = insertSource(SourceLoc, PipePD.copy(deep=True), BaseSensor1_Loc, BaseSensor2_Loc)
 

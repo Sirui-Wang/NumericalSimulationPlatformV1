@@ -636,7 +636,7 @@ def RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges, randomseed):
     RandomPipeSection = np.random.randint(0, NumberOfEdges, dtype=int)
     RandomEdge = SortedEdges[RandomPipeSection]
     PipeLength = G.edges[RandomEdge]["length"]
-    GridResolution = PipeLength / MaxFreq
+    GridResolution = 1000 / MaxFreq
     UpStreamLimit = GridResolution
     DownstreamLimit = PipeLength - GridResolution
     RandomPertLocationInEdge = round_nearest2(np.random.uniform(UpStreamLimit, DownstreamLimit), GridResolution)

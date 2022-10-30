@@ -24,9 +24,9 @@ def definePipe():
     Targets = np.array(["B", "C", "D", "E", "F"])
     Sections_L = np.array([250, 250, 100, 250, 250])
     Sections_a = np.full(len(Sections), 1000)
-    # Sections_D = np.array([0.3, 0.3, 0.2, 0.3, 0.3]) # OG
-    # Sections_U = np.array([1.41, 1.41, 3.18, 1.41, 1.41]) # OG
-    # Sections_f = np.array([0.038, 0.038, 0.041, 0.038, 0.038]) # OG
+    Sections_D = np.array([0.3, 0.3, 0.2, 0.3, 0.3])  # OG
+    Sections_U = np.array([1.41, 1.41, 3.18, 1.41, 1.41])  # OG
+    Sections_f = np.array([0.038, 0.038, 0.044, 0.038, 0.038])  # OG
     """0.9R"""
     # Sections_D = np.array([0.435, 0.435, 0.1, 0.435, 0.435])
     # Sections_f = np.array([0.035, 0.035, 0.057, 0.035, 0.035])
@@ -44,10 +44,10 @@ def definePipe():
     # Sections_f = np.array([0.042, 0.042, 0.057, 0.042, 0.042])
     # Sections_U = np.array([0.45, 0.2451, 2.55, 0.45, 0.45])
     """0.5R"""
-    Sections_D = np.array([0.173, 0.173, 0.1, 0.173, 0.173])
+    # Sections_D = np.array([0.173, 0.173, 0.1, 0.173, 0.173])
+    # # Sections_f = np.array([0.047, 0.047, 0.057, 0.047, 0.047])
     # Sections_f = np.array([0.047, 0.047, 0.057, 0.047, 0.047])
-    Sections_f = np.array([0.047, 0.047, 0.057, 0.047, 0.047])
-    Sections_U = np.array([0.85, 0.85, 2.55, 0.85, 0.85])
+    # Sections_U = np.array([0.85, 0.85, 2.55, 0.85, 0.85])
     Sections_A = (np.pi * Sections_D ** 2) / 4
     Sections_Q0 = Sections_A * Sections_U
     Sections_S = np.zeros(len(Sections))
@@ -133,17 +133,17 @@ def plotImpulseResponse(time, Sensor1, Sensor2, Title):
 
 
 def plotCorrelation(time, Sensor1, Sensor2, Title):
-    # CCIndexese = np.argwhere(abs(CrossCorrelation)>0.08)
-    ZeroPeak1 = np.argwhere(abs(Sensor1) < 0.08)
-    ZeroPeak2 = np.argwhere(abs(Sensor2) < 0.08)
-    Sensor1[ZeroPeak1] = 0
-    Sensor2[ZeroPeak2] = 0
-    ZeroPeak1 = np.argwhere(abs(Sensor1) < 0.08)
+    # # CCIndexese = np.argwhere(abs(CrossCorrelation)>0.08)
+    # ZeroPeak1 = np.argwhere(abs(Sensor1) < 0.08)
+    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 0.08)
+    # Sensor1[ZeroPeak1] = 0
+    # Sensor2[ZeroPeak2] = 0
+    # ZeroPeak1 = np.argwhere(abs(Sensor1) < 0.08)
     CrossCorrelation = np.correlate(Sensor1, Sensor2, mode="same")
-    CCIndexese = np.argwhere(abs(CrossCorrelation) > 0.0025)
-    for i in CCIndexese:
-        print(time[i] - 20, CrossCorrelation[i])
-    print("end-------------------------------")
+    # CCIndexese = np.argwhere(abs(CrossCorrelation) > 0.0025)
+    # for i in CCIndexese:
+    #     print(time[i] - 20, CrossCorrelation[i])
+    # print("end-------------------------------")
     plt.figure(Title)
     plt.plot(time, CrossCorrelation)
 
@@ -222,32 +222,21 @@ def worker(key_index):
     global GraphDict, GridSize, SimulationSizePerPipe, Freq_range, Sensor1, Sensor2, timeArray, timeArray1
     key = list(GraphDict.keys())[key_index]
     Graph, PipeLength = GraphDict[key]
+    print(key_index, key)
     if key == ("C", "D"):
         np.random.seed(key_index)
-        SimulationSizePerPipe = max(int(0.4 * SimulationSizePerPipe), 1)
-        PertLocations = np.random.uniform(0, int(PipeLength), SimulationSizePerPipe)
-    elif key == ("A", "B"):
-        # np.random.seed(key_index)
-        np.random.seed(11)
-        SimulationSizePerPipe = SimulationSizePerPipe
-        PertLocations = np.random.uniform(0, int(PipeLength), SimulationSizePerPipe)
-    elif key == ("E", "F"):
-        # np.random.seed(key_index)
-        np.random.seed(10)
-        SimulationSizePerPipe = SimulationSizePerPipe
-        PertLocations = np.random.uniform(0, int(PipeLength), SimulationSizePerPipe)
-    elif key == ("B", "C"):
-        # np.random.seed(key_index)
-        SimulationSizePerPipe = SimulationSizePerPipe
-        PertLocations = np.random.uniform(0, int(PipeLength), SimulationSizePerPipe)
-    elif key == ("D", "E"):
-        # np.random.seed(key_index)
-        SimulationSizePerPipe = SimulationSizePerPipe
-        PertLocations = np.random.uniform(0, int(PipeLength), SimulationSizePerPipe)
+        NewSimulationSizePerPipe = max(int(0.4 * SimulationSizePerPipe), 1)
+        PertLocations = np.random.uniform(0, int(PipeLength), NewSimulationSizePerPipe)
+    else:
+        np.random.seed(key_index)
+        NewSimulationSizePerPipe = SimulationSizePerPipe
+        PertLocations = np.random.uniform(0, int(PipeLength), NewSimulationSizePerPipe)
     SumSensor1 = np.zeros(len(timeArray1))
     SumSensor2 = np.zeros(len(timeArray1))
     RoundedPertLocations = np.zeros(len(PertLocations))
     index = 0
+    np.random.seed(key_index)
+    print(PertLocations)
     for simulation in tqdm(PertLocations):
         simulation = round_nearest2(simulation, GridSize)
         RoundedPertLocations[index] = simulation
@@ -263,22 +252,21 @@ def worker(key_index):
                                             mode="full")
         Sensor2TimeHeadWNoise = np.convolve(np.real(np.fft.ifft(Sensor2FreqHead, len(Sensor2FreqHead))), Noise,
                                             mode="full")
-        plotImpulseResponse(timeArray, np.real(np.fft.ifft(Sensor1FreqHead, len(Sensor1FreqHead))),
-                            np.real(np.fft.ifft(Sensor2FreqHead, len(Sensor2FreqHead))),
-                            "ImpulseResponse {}, {}".format(key, simulation))
+        # plotImpulseResponse(timeArray, np.real(np.fft.ifft(Sensor1FreqHead, len(Sensor1FreqHead))),
+        #                     np.real(np.fft.ifft(Sensor2FreqHead, len(Sensor2FreqHead))),
+        #                     "ImpulseResponse {}, {}".format(key, simulation))
         # Sensor1ImpulsesIndexes = np.argwhere(abs(Sensor1Time)>0.02)
         # print("Sensor1", "\n","Head", Sensor1Time[Sensor1ImpulsesIndexes], "\n", "time", timeArray[Sensor1ImpulsesIndexes])
         # Sensor2ImpulsesIndexes = np.argwhere(abs(Sensor2Time)>0.02)
         # print("Sensor2", "\n", "Head", Sensor2Time[Sensor2ImpulsesIndexes], "\n", "time",timeArray[Sensor2ImpulsesIndexes])
         # drawGraph(SplitedG, "Graph {}, {}".format(key, PertLocation))
         # plotCorrelation(timeArray1, Sensor1TimeHeadWNoise, Sensor2TimeHeadWNoise,"CrossCorrelation {}, {}".format(key, simulation))
-        plotCorrelation(timeArray, Sensor1Time, Sensor2Time,
-                        "CrossCorrelation without noise {}, {}".format(key, simulation))
-        plt.show()
-        S1Power = np.sum((abs(Sensor1TimeHeadWNoise)) ** 2) / len(Sensor1TimeHeadWNoise)
-        S2Power = np.sum((abs(Sensor2TimeHeadWNoise)) ** 2) / len(Sensor2TimeHeadWNoise)
-        Sensor1TimeHeadWNoise = Sensor1TimeHeadWNoise / np.sqrt(S1Power)
-        Sensor2TimeHeadWNoise = Sensor2TimeHeadWNoise / np.sqrt(S2Power)
+        # plotCorrelation(timeArray, Sensor1Time, Sensor2Time,
+        #                 "CrossCorrelation without noise {}, {}".format(key, simulation))
+        # S1Power = np.sum((abs(Sensor1TimeHeadWNoise)) ** 2) / len(Sensor1TimeHeadWNoise)
+        # S2Power = np.sum((abs(Sensor2TimeHeadWNoise)) ** 2) / len(Sensor2TimeHeadWNoise)
+        # Sensor1TimeHeadWNoise = Sensor1TimeHeadWNoise / np.sqrt(S1Power)
+        # Sensor2TimeHeadWNoise = Sensor2TimeHeadWNoise / np.sqrt(S2Power)
         SumSensor1 = np.add(SumSensor1, Sensor1TimeHeadWNoise)
         SumSensor2 = np.add(SumSensor2, Sensor2TimeHeadWNoise)
     return SumSensor1, SumSensor2, RoundedPertLocations, key
@@ -302,7 +290,7 @@ def main():
     timeArray = np.arange(0, (1 / df) + (1 / MaxF), 1 / MaxF)
     timeArray1 = np.arange(0, (1 / df) * 2 + (1 / MaxF), 1 / MaxF)
     GridSize = 1000 / MaxF
-    SimulationSizePerPipe = 1
+    SimulationSizePerPipe = 25
     SumSensor1 = np.zeros(len(timeArray1))
     SumSensor2 = np.zeros(len(timeArray1))
     # CoreCount = len(GraphDict.keys())

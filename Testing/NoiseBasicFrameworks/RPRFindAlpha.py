@@ -3,13 +3,13 @@ import numpy as np
 from tqdm import tqdm
 
 global PipeLength, a, D, U, f, A, Q0, dt, MaxT, HA, HB
-HA = 60
-HB = 39.08
-PipeLength = 100
+# HA = 60
+# HB = 39.08
+PipeLength = 1100
 a = 1000  # WaveSpeed
-D = 0.1  # Diameter
-U = 2.55  # FlowVelocity
-f = 0.057  # FrictionFactor
+D = 0.3  # Diameter
+U = 2.12  # FlowVelocity
+f = 0.038  # FrictionFactor
 df = 0.0025
 MaxF = 500
 dt = 1 / MaxF
@@ -155,7 +155,7 @@ def TM():
     # plt.figure("Flow")
     # plt.plot(time, SensorFlowTime)
     """Linear Regression"""
-    Indexes = np.argwhere(SensorHeadTime > 0.002)
+    Indexes = np.argwhere(SensorHeadTime > 0.0075)
     Y = SensorHeadTime[Indexes]
     X = time[Indexes]
     plt.plot(X, Y, ".")

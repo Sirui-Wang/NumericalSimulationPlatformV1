@@ -586,49 +586,48 @@ def CalculateAllNode(G, Solutions, i, all_result_dict):
         all_result_dict[edge]["target"]["qfreq"][i] = targetFlow
 
 
-def round_nearest2(x, a):
-    try:
-        x.ndim
-        rounded_x = np.zeros(np.shape(x))
-        if x.ndim == 1:
-            for i in range(len(x)):
-                rounded_x[i] = round(x[i] / a) * a
-        else:
-            for row_index in range(np.shape(x)[1]):
-                for col_index in range(np.shape(x)[0]):
-                    rounded_x[row_index][col_index] = round(x[row_index][col_index] / a) * a
-    except AttributeError:
-        rounded_x = round(x / a) * a
-    return rounded_x
+# def round_nearest2(x, a):
+#     try:
+#         x.ndim
+#         rounded_x = np.zeros(np.shape(x))
+#         if x.ndim == 1:
+#             for i in range(len(x)):
+#                 rounded_x[i] = round(x[i] / a) * a
+#         else:
+#             for row_index in range(np.shape(x)[1]):
+#                 for col_index in range(np.shape(x)[0]):
+#                     rounded_x[row_index][col_index] = round(x[row_index][col_index] / a) * a
+#     except AttributeError:
+#         rounded_x = round(x / a) * a
+#     return rounded_x
 
 
-def SplitEdge(UpstreamLength, Edge, SplitedG):
-    Source, target = Edge
-    SelectedEdgeProperties = SplitedG.edges[Edge]
-    SelectedEdgeProperties["PertType"] = None
-    SelectedEdgeProperties["PertLocation"] = None
-    NewNodeAttribute = {"head": 0, "isBC": False, "BCType": None}
-    SplitedG.add_node("Pert", head=0, isBC=False, BCType=None)
-    SplitedG.remove_edge(Source, target)
-    SplitedG.add_edge(Source, "Pert",
-                      length=UpstreamLength,
-                      diameter=SelectedEdgeProperties["diameter"],
-                      wave_velocity=SelectedEdgeProperties["wave_velocity"],
-                      friction_factor=SelectedEdgeProperties["friction_factor"],
-                      flow_velocity=SelectedEdgeProperties["flow_velocity"],
-                      PertType="head",
-                      HasSensor="",
-                      PertLocation="Pert")
-    SplitedG.add_edge("Pert", target,
-                      length=SelectedEdgeProperties["length"] - UpstreamLength,
-                      diameter=SelectedEdgeProperties["diameter"],
-                      wave_velocity=SelectedEdgeProperties["wave_velocity"],
-                      friction_factor=SelectedEdgeProperties["friction_factor"],
-                      flow_velocity=SelectedEdgeProperties["flow_velocity"],
-                      PertType="",
-                      HasSensor="",
-                      PertLocation="")
-    return SplitedG
+def SplitEdge(G, edge):
+    Source, target = edge
+    SelectedEdgeProperties = G.edges[edge]
+    G.add_node("Pert", head=0, isBC=False, BCType=None)
+    G.remove_edge(Source, target)
+    G.add_edge(Source, "Pert",
+               length=SelectedEdgeProperties["length"],
+               diameter=SelectedEdgeProperties["diameter"],
+               wave_velocity=SelectedEdgeProperties["wave_velocity"],
+               friction_factor=SelectedEdgeProperties["friction_factor"],
+               flow_velocity=SelectedEdgeProperties["flow_velocity"],
+               PertType="head",
+               HasSensor="",
+               PertLocation="Pert")
+    """Always have the source location at the downstream of the first section"""
+    """actual source location Will always be downstream of (Source, "Pert")"""
+    G.add_edge("Pert", target,
+               length=SelectedEdgeProperties["length"],
+               diameter=SelectedEdgeProperties["diameter"],
+               wave_velocity=SelectedEdgeProperties["wave_velocity"],
+               friction_factor=SelectedEdgeProperties["friction_factor"],
+               flow_velocity=SelectedEdgeProperties["flow_velocity"],
+               PertType="",
+               HasSensor="",
+               PertLocation="")
+    return G
 
 
 def RandomPertsinPipes(G, MaxFreq, SortedEdges, NumberOfEdges, randomseed):

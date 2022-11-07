@@ -1,9 +1,5 @@
-
-import os
-from tkinter import filedialog
-import pyexcel
-from matplotlib import pyplot as plt
 from TransferMatrix.TMTools import *
+
 
 def TMCalculation(data_pack, SubProgressBar, ProgressPage):
     freq, branches_dict, sub_matrixes = data_pack
@@ -105,7 +101,6 @@ def TMCalculation(data_pack, SubProgressBar, ProgressPage):
                     end_node_flow = C[0][0]
                     end_node_head = C[1][0]
     return Result_dict
-
 
 
 def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range):

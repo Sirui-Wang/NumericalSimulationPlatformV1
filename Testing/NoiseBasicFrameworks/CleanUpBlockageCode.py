@@ -22,11 +22,11 @@ def definePipe():
     Sections = np.array([0, 1, 2, 3, 4])
     Sources = np.array(["A", "B", "C", "D", "E"])
     Targets = np.array(["B", "C", "D", "E", "F"])
-    Sections_L = np.array([250, 250, 100, 250, 250])
+    Sections_L = np.array([250, 250, 150, 200, 250])
     Sections_a = np.full(len(Sections), 1000)
-    Sections_D = np.array([0.3, 0.3, 0.2, 0.3, 0.3])  # OG
-    Sections_U = np.array([1.41, 1.41, 3.18, 1.41, 1.41])  # OG
-    Sections_f = np.array([0.038, 0.038, 0.044, 0.038, 0.038])  # OG
+    Sections_D = np.array([0.3, 0.3, 0.173, 0.3, 0.3])  # OG
+    Sections_U = np.array([0.71, 0.71, 2.13, 0.71, 0.71])  # OG
+    Sections_f = np.array([0.038, 0.038, 0.046, 0.038, 0.038])  # OG
     """0.9R"""
     # Sections_D = np.array([0.435, 0.435, 0.1, 0.435, 0.435])
     # Sections_f = np.array([0.035, 0.035, 0.057, 0.035, 0.035])
@@ -198,14 +198,14 @@ def analysis(G, Freq_range, Sensor1, Sensor2):
                             [0]])
             Solution = np.linalg.solve(EQA, EQB)
             Q, q, H, h = Solution
-        else:
-            EQA = [[-1, c2],
-                   [0, c5]]
-            EQB = [[-c3],
-                   [-c6]]
-            Solution = np.linalg.solve(EQA, EQB)
-            Q, h = Solution
-            H, q = [[0], [0]]
+        # else:
+        #     EQA = [[-1, c2],
+        #            [0, c5]]
+        #     EQB = [[-c3],
+        #            [-c6]]
+        #     Solution = np.linalg.solve(EQA, EQB)
+        #     Q, h = Solution
+        #     H, q = [[0], [0]]
         Sensor1Result = Sensor1F @ [q, h, [1]]
         Sensor2Result = Sensor2F @ [q, h, [1]]
         Sensor1_Head_fResponse[i] = Sensor1Result[1][0]
@@ -238,7 +238,9 @@ def worker(key_index):
     np.random.seed(key_index)
     print(PertLocations)
     for simulation in tqdm(PertLocations):
+
         simulation = round_nearest2(simulation, GridSize)
+        print(simulation)
         RoundedPertLocations[index] = simulation
         index += 1
         SplitedG = editPipeLength(copy.deepcopy(Graph), key, simulation)
@@ -252,23 +254,24 @@ def worker(key_index):
                                             mode="full")
         Sensor2TimeHeadWNoise = np.convolve(np.real(np.fft.ifft(Sensor2FreqHead, len(Sensor2FreqHead))), Noise,
                                             mode="full")
-        # plotImpulseResponse(timeArray, np.real(np.fft.ifft(Sensor1FreqHead, len(Sensor1FreqHead))),
-        #                     np.real(np.fft.ifft(Sensor2FreqHead, len(Sensor2FreqHead))),
-        #                     "ImpulseResponse {}, {}".format(key, simulation))
+        plotImpulseResponse(timeArray, np.real(np.fft.ifft(Sensor1FreqHead, len(Sensor1FreqHead))),
+                            np.real(np.fft.ifft(Sensor2FreqHead, len(Sensor2FreqHead))),
+                            "ImpulseResponse {}, {}".format(key, simulation))
         # Sensor1ImpulsesIndexes = np.argwhere(abs(Sensor1Time)>0.02)
         # print("Sensor1", "\n","Head", Sensor1Time[Sensor1ImpulsesIndexes], "\n", "time", timeArray[Sensor1ImpulsesIndexes])
         # Sensor2ImpulsesIndexes = np.argwhere(abs(Sensor2Time)>0.02)
         # print("Sensor2", "\n", "Head", Sensor2Time[Sensor2ImpulsesIndexes], "\n", "time",timeArray[Sensor2ImpulsesIndexes])
         # drawGraph(SplitedG, "Graph {}, {}".format(key, PertLocation))
         # plotCorrelation(timeArray1, Sensor1TimeHeadWNoise, Sensor2TimeHeadWNoise,"CrossCorrelation {}, {}".format(key, simulation))
-        # plotCorrelation(timeArray, Sensor1Time, Sensor2Time,
-        #                 "CrossCorrelation without noise {}, {}".format(key, simulation))
+        plotCorrelation(timeArray, Sensor1Time, Sensor2Time,
+                        "CrossCorrelation without noise {}, {}".format(key, simulation))
         # S1Power = np.sum((abs(Sensor1TimeHeadWNoise)) ** 2) / len(Sensor1TimeHeadWNoise)
         # S2Power = np.sum((abs(Sensor2TimeHeadWNoise)) ** 2) / len(Sensor2TimeHeadWNoise)
         # Sensor1TimeHeadWNoise = Sensor1TimeHeadWNoise / np.sqrt(S1Power)
         # Sensor2TimeHeadWNoise = Sensor2TimeHeadWNoise / np.sqrt(S2Power)
         SumSensor1 = np.add(SumSensor1, Sensor1TimeHeadWNoise)
         SumSensor2 = np.add(SumSensor2, Sensor2TimeHeadWNoise)
+        plt.show()
     return SumSensor1, SumSensor2, RoundedPertLocations, key
 
 
@@ -290,7 +293,7 @@ def main():
     timeArray = np.arange(0, (1 / df) + (1 / MaxF), 1 / MaxF)
     timeArray1 = np.arange(0, (1 / df) * 2 + (1 / MaxF), 1 / MaxF)
     GridSize = 1000 / MaxF
-    SimulationSizePerPipe = 25
+    SimulationSizePerPipe = 1
     SumSensor1 = np.zeros(len(timeArray1))
     SumSensor2 = np.zeros(len(timeArray1))
     # CoreCount = len(GraphDict.keys())

@@ -7,9 +7,9 @@ global PipeLength, a, D, U, f, A, Q0, dt, MaxT, HA, HB
 # HB = 39.08
 PipeLength = 1100
 a = 1000  # WaveSpeed
-D = 0.3  # Diameter
-U = 2.12  # FlowVelocity
-f = 0.038  # FrictionFactor
+D = 0.173  # Diameter
+U = 2.13  # FlowVelocity
+f = 0.046  # FrictionFactor
 df = 0.0025
 MaxF = 500
 dt = 1 / MaxF
@@ -99,7 +99,6 @@ def MOC():
     # plt.ylabel("Head")
     # plt.grid(True)
 
-
 def FieldMatrix(freq, L):
     g = 9.81
     n = 2  # empirical value for TM friction term R
@@ -112,7 +111,6 @@ def FieldMatrix(freq, L):
                   [-Zc * np.sinh(mu * L), np.cosh(mu * L), 0],
                   [0, 0, 1]])
     return F
-
 
 def DataatSensor(freq, L, q, h):
     F = FieldMatrix(freq, L)
@@ -155,7 +153,7 @@ def TM():
     # plt.figure("Flow")
     # plt.plot(time, SensorFlowTime)
     """Linear Regression"""
-    Indexes = np.argwhere(SensorHeadTime > 0.0075)
+    Indexes = np.argwhere(SensorHeadTime > 0.00325)
     Y = SensorHeadTime[Indexes]
     X = time[Indexes]
     plt.plot(X, Y, ".")

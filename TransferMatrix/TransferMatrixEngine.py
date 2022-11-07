@@ -12,35 +12,182 @@ import TransferMatrix.NormalAnalysis as NormalAnalysis
 from TransferMatrix.TMTools import *
 
 
-def worker(Simulation):
-    global gG, gMaxFreq, gfreq_range, gNumberOfEdges, gEnvir, gSortedEdges, Sensor1Superpositioned, Sensor2Superpositioned
-    SplitedG, PertEdge, PertLocation = RandomPertsinPipes(gG, gMaxFreq, gSortedEdges, gNumberOfEdges,
-                                                          randomseed=Simulation)
-    SensorResult = NoiseAnalysis.main(SplitedG, gEnvir, gfreq_range)
-    SensorA = gEnvir["Sensor1"]
-    SensorB = gEnvir["Sensor2"]
-    HFreqResultS1 = SensorResult[SensorA]["hfreq"]
-    HFreqResultS2 = SensorResult[SensorB]["hfreq"]
-    np.random.seed(
-        Simulation)  # Because multiprocess.pool.imap_unordered is unordered, use simulationID as random seed to generate random value such that the result is reproducible
-    Noise = np.random.normal(0, 1, np.shape(HFreqResultS1))
-    Sensor1Time = np.convolve(np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))), Noise, mode="same")
-    Sensor2Time = np.convolve(np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), Noise, mode="same")
-    Sensor1Superpositioned = np.add(Sensor1Superpositioned, Sensor1Time)
-    Sensor2Superpositioned = np.add(Sensor2Superpositioned, Sensor2Time)
-    return HFreqResultS1, HFreqResultS2, Sensor1Superpositioned, Sensor2Superpositioned
+def round_nearest2(x, a):
+    rounded_x = round(x / a) * a
+    return rounded_x
+
+
+def editPipeLength(CopyG, Key, SourceLoc):
+    source, target = Key
+    PipeLength = float(CopyG.edges[(source, "Pert")]["length"])
+    LengthBF = SourceLoc
+    LengthAFT = PipeLength - SourceLoc
+    CopyG.edges[(source, "Pert")]["length"] = LengthBF
+    CopyG.edges[("Pert", target)]["length"] = LengthAFT
+    return CopyG
+
+
+def plotImpulseResponse(time, Sensor1, Sensor2, Title):
+    # ZeroPeak1 = np.argwhere(abs(Sensor1) < 10)
+    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 60)
+    # Sensor1[ZeroPeak1] = 0
+    # Sensor2[ZeroPeak2] = 0
+    plt.figure(Title)
+    plt.plot(time, Sensor1, label="Sensor1")
+    plt.plot(time, Sensor2, label="Sensor2")
+    plt.legend()
+
+
+def plotCorrelation(time, Sensor1, Sensor2, Title):
+    # ZeroPeak1 = np.argwhere(abs(Sensor1) < 10)
+    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 60)
+    # Sensor1[ZeroPeak1] = 0
+    # Sensor2[ZeroPeak2] = 0
+    CrossCorrelation = np.correlate(Sensor1, Sensor2, mode="same")
+    CCIndexese = np.argwhere(abs(CrossCorrelation) > 100000000)
+    for i in CCIndexese:
+        print("CC", time[i] - int(time[-1] / 2), CrossCorrelation[i])
+    print("end-------------------------------")
+    plt.figure(Title)
+    plt.plot(time - int(time[-1] / 2), CrossCorrelation)
+
+
+def worker(key_index):
+    global dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2
+    key = list(PossibleCaseDict.keys())[key_index]
+    # print(key_index, key)
+    Graph, PipeLength, wavespeed = PossibleCaseDict[key]
+    SimulationSize = max(int(SimulationSizePerMeter * PipeLength), 1)
+    np.random.seed(key_index)
+    PertLocations = np.random.uniform(0, PipeLength, SimulationSize)
+    SumSensor1 = np.zeros(len(timeArray2))
+    SumSensor2 = np.zeros(len(timeArray2))
+    GridSize = wavespeed / MaxFreq
+    np.random.seed(key_index + 10)
+    # print(PertLocations)
+    print(key)
+    for simulation in tqdm(range(len(PertLocations))):
+        Pertlocation = PertLocations[simulation]
+        Pertlocation = round_nearest2(Pertlocation, GridSize)
+        NewGraph = editPipeLength(copy.deepcopy(Graph), key, Pertlocation)
+        SensorResult = NoiseAnalysis.main(NewGraph, Envir, freq_range)
+        HFreqResultS1 = SensorResult[Sensor1]["hfreq"]
+        HFreqResultS2 = SensorResult[Sensor2]["hfreq"]
+        Noise = np.random.normal(0, 0.1, len(timeArray1))
+        NPower = np.sum((abs(Noise)) ** 2) / len(Noise)
+        Noise = Noise / np.sqrt(NPower)
+        Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1)))
+        Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2)))
+        Sensor1WNoise = np.convolve(Sensor1Time, Noise, mode="full")
+        Sensor2WNoise = np.convolve(Sensor2Time, Noise, mode="full")
+        SumSensor1 = np.add(SumSensor1, Sensor1WNoise)
+        SumSensor2 = np.add(SumSensor2, Sensor2WNoise)
+        # plotCorrelation(timeArray2, Sensor1WNoise, Sensor2WNoise,
+        #                 "Sensor Correlation With Noise of {}, source {}".format(key, Pertlocation))
+        print(Pertlocation)
+        # plotCorrelation(timeArray1, Sensor1Time, Sensor2Time,
+        #                 "Sensor Correlation W/O Noise of {}, source {}".format(key, Pertlocation))
+        plotImpulseResponse(timeArray1, Sensor1Time, Sensor2Time,
+                            "ImpulseResponse of {} with Source {}".format(key, Pertlocation))
+        plt.show()
+    return SumSensor1, SumSensor2, PertLocations, key
 
 
 def init_worker(shared_data):
-    global gG, gMaxFreq, gfreq_range, gNumberOfEdges, gEnvir, gSortedEdges, Sensor1Superpositioned, Sensor2Superpositioned
-    gG, gMaxFreq, gfreq_range, gNumberOfEdges, gEnvir, gSortedEdges, Sensor1Superpositioned, Sensor2Superpositioned = shared_data
+    global dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2
+    dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2 = shared_data
 
 
-def track_job(job, update_interval=3):
-    while job._number_left > 0:
-        print("Tasks remaining = {0}".format(
-            job._number_left * job._chunksize))
-        time.sleep(update_interval)
+def PossibleSourceLocations(G):
+    CaseDict = {}
+    for possibleCase in list(G.edges):
+        CopyG = copy.deepcopy(G)
+        CopyG = SplitEdge(CopyG, possibleCase)
+        CaseDict[possibleCase] = (CopyG, G.edges[possibleCase]["length"], G.edges[possibleCase]["wave_velocity"])
+    return CaseDict
+
+
+def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2):
+    SaveDict = {}
+    start_time = time.time()
+    SimulationSizePerMeter = float(Envir["SimSize"])
+    """Start MultiProcessing by start multiple processs"""
+    Sensor1 = Envir["Sensor1"]
+    Sensor2 = Envir["Sensor2"]
+    SumSensor1 = np.zeros(len(timeArray2))
+    SumSensor2 = np.zeros(len(timeArray2))
+    PossibleCaseDict = PossibleSourceLocations(G)
+    SourceLocationRecord = {}
+    # CoreCount = min(len(G.edges), 12)
+    CoreCount = 1
+    with mp.Pool(processes=CoreCount, initializer=init_worker, initargs=(
+            (dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1,
+             timeArray2),)) as pool:
+        for result in pool.map(worker, range(len(list(PossibleCaseDict.keys())))):
+            Sensor1Result, Sensor2Result, SourceDist, key = result
+            SumSensor1 = np.add(SumSensor1, Sensor1Result)
+            SumSensor2 = np.add(SumSensor2, Sensor2Result)
+            SourceLocationRecord[key] = SourceDist
+    CrossCorrelatedResult = np.correlate(SumSensor1, SumSensor2, mode="same")
+    AutoCorrelatedResultSensor1 = np.correlate(SumSensor1, SumSensor1, mode="same")
+    AutoCorrelatedResultSensor2 = np.correlate(SumSensor2, SumSensor2, mode="same")
+    CorrelatedTime = timeArray2 - ((1 / dFreq))
+    SaveTime = np.column_stack(
+        (CorrelatedTime, CrossCorrelatedResult, AutoCorrelatedResultSensor1, AutoCorrelatedResultSensor2))
+    plt.figure("Correlated Result from Sensor1 and Sensor2")
+    plt.plot(CorrelatedTime, CrossCorrelatedResult)
+    plt.figure("AutoCorrelated result from Sensor1 and Sensor2")
+    plt.plot(CorrelatedTime, AutoCorrelatedResultSensor1, label=Sensor1)
+    plt.plot(CorrelatedTime, AutoCorrelatedResultSensor2, label=Sensor2)
+    plt.legend()
+    SaveDict["Result"] = SaveTime.tolist()
+    print("--- %s seconds ---" % (time.time() - start_time))
+    return SaveDict
+
+
+def NormalAnalysis(G, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range, timeArray1):
+    SaveDict = {}
+    result_dict, all_result_dict = NormalAnalysis.main(G, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq,
+                                                       freq_range)
+    for edge in G.edges:
+        source, target = edge
+        SensorHfreq = result_dict[edge]["hfreq"]
+        SensorQfreq = result_dict[edge]["qfreq"]
+        SourceHfreq = all_result_dict[edge]["source"]["hfreq"]
+        SourceQfreq = all_result_dict[edge]["source"]["qfreq"]
+        TargetHfreq = all_result_dict[edge]["target"]["hfreq"]
+        TargetQfreq = all_result_dict[edge]["target"]["qfreq"]
+        SensorHTime = np.real(np.fft.ifft(SensorHfreq, len(SensorHfreq)))
+        SensorQTime = np.real(np.fft.ifft(SensorQfreq, len(SensorQfreq)))
+        SourceHTime = np.real(np.fft.ifft(SourceHfreq, len(SourceHfreq)))
+        SourceQTime = np.real(np.fft.ifft(SourceQfreq, len(SourceQfreq)))
+        TargetHTime = np.real(np.fft.ifft(TargetHfreq, len(TargetHfreq)))
+        TargetQTime = np.real(np.fft.ifft(TargetQfreq, len(TargetQfreq)))
+        plt.figure("({},{}) {}".format(source, target, "Source"))
+        plt.plot(timeArray1, SourceHTime)
+        plt.figure("({},{}) {}".format(source, target, "Target"))
+        plt.plot(timeArray1, TargetHTime)
+        time_name = "Pipe {0}-{1} Time".format(source, target)
+        freq_name = "Pipe {0}-{1} Freq".format(source, target)
+        timeHeading = np.array(
+            ["Time", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor",
+             "Flow Sensor",
+             "Head Target({})".format(target), "Flow Target({})".format(target)])
+        freqHeading = np.array(
+            ["Freq", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor",
+             "Flow Sensor",
+             "Head Target({})".format(target), "Flow Target({})".format(target)])
+        SaveTime = np.column_stack(
+            (timeArray1, SourceHTime, SourceQTime, SensorHTime, SensorQTime, TargetHTime, TargetQTime))
+        SaveFreq = np.column_stack(
+            (freq_range, abs(SourceHfreq), abs(SourceQfreq), abs(SensorHfreq), abs(SensorQfreq), abs(TargetHfreq),
+             abs(TargetQfreq)))
+        SaveTime = np.row_stack((timeHeading, SaveTime))
+        SaveFreq = np.row_stack((freqHeading, SaveFreq))
+        SaveDict[time_name] = SaveTime.tolist()
+        SaveDict[freq_name] = SaveFreq.tolist()
+    return SaveDict
+
 
 def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     G = Graph
@@ -49,111 +196,19 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     Output_loc = filedialog.asksaveasfilename(initialdir=dirname + "/Results", initialfile="Result", title="Save File",
                                               defaultextension=".xlsx",
                                               filetypes=extensions)  # Save File
-    start_time = time.time()
     dFreq = float(Envir["df"])
-    maxFreq = int(Envir["MaxFreq"])
-    freq_range = np.arange(0, maxFreq + dFreq, dFreq)
-    time_range = np.arange(0, (1 / dFreq) + (1 / maxFreq), 1 / maxFreq)
+    MaxFreq = int(Envir["MaxFreq"])
+    freq_range = np.arange(0, MaxFreq + dFreq, dFreq)
+    timeArray1 = np.arange(0, (1 / dFreq) + (1 / MaxFreq), 1 / MaxFreq)
+    timeArray2 = np.arange(0, (1 / dFreq) * 2 + (1 / MaxFreq), 1 / MaxFreq)
+    timeArray4 = np.arange(0, (1 / dFreq) * 4 + (1 / MaxFreq), 1 / MaxFreq)
     if Envir["FreqMode"] == "Randomized Noise":
-        SaveDict = {}
-        MaxFreq = float(Envir["MaxFreq"])
-        NumberOfEdges = len(list(G.edges))
-        SortedEdges = sorted(list(G.edges))
-        SimulationSize = int(Envir["SimSize"])
-        Simulations = range(0, SimulationSize, 1)
-        Sensor1Superpositioned = np.zeros(len(freq_range))  # * 2 - 1)
-        Sensor2Superpositioned = np.zeros(len(freq_range))  # * 2 - 1)
-        Sensor1Superpositioned_verify = np.zeros(len(freq_range))  # * 2 - 1)
-        Sensor2Superpositioned_verify = np.zeros(len(freq_range))  # * 2 - 1)
-        """Start MultiProcessing by start multiple processs"""
-        CoreCount = 12
-        chunksize = 10  # round(SimulationSize/CoreCount/20)
-        Sensors = [Envir["Sensor1"], Envir["Sensor2"]]
-        SensorA = Sensors[0]
-        SensorB = Sensors[1]
-        with mp.Pool(processes=CoreCount, initializer=init_worker,
-                     initargs=((G, MaxFreq, freq_range, NumberOfEdges, Envir, SortedEdges, Sensor1Superpositioned,
-                                Sensor2Superpositioned),)) as pool:
-            for result in tqdm(pool.imap(worker, Simulations, chunksize=chunksize), total=SimulationSize):
-                HFreqResultS1, HFreqResultS2, Sensor1Superpositioned, Sensor2Superpositioned = result
-                # np.random.seed(Simulation)  # Because multiprocess.pool.imap_unordered is unordered, use simulationID as random seed to generate random value such that the result is reproducible
-                # Noise = np.random.normal(0, 1, np.shape(HFreqResultS1))
-                # Sensor1Time = np.convolve(np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))), Noise, mode="same")
-                # Sensor2Time = np.convolve(np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), Noise, mode="same")
-                # Sensor1Superpositioned_verify = np.add(Sensor1Superpositioned_verify, Sensor1Time)
-                # Sensor2Superpositioned_verify = np.add(Sensor2Superpositioned_verify, Sensor2Time)
-                # MainProgressBar["value"] += 100 / SimulationSize
-                # ProgressPage.update()
-        print("--- %s seconds ---" % (time.time() - start_time))
-        CrossCorrelatedResult = np.correlate(Sensor1Superpositioned, Sensor2Superpositioned, mode="same")
-        AutoCorrelatedResultSensor1 = np.correlate(Sensor1Superpositioned, Sensor1Superpositioned, mode="same")
-        AutoCorrelatedResultSensor2 = np.correlate(Sensor2Superpositioned, Sensor2Superpositioned, mode="same")
-        CorrelatedTime = np.arange(0, (1 / dFreq) + (1 / MaxFreq), 1 / MaxFreq)
-        SaveTime = np.column_stack(
-            (CorrelatedTime, CrossCorrelatedResult, AutoCorrelatedResultSensor1, AutoCorrelatedResultSensor2))
-        plt.figure("Random Source")
-        plt.plot(time_range, np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1))), label=SensorA)
-        plt.plot(time_range, np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2))), label=SensorB)
-        plt.legend()
-        plt.figure("Correlated Result from Sensor1 and Sensor2")
-        plt.plot(CorrelatedTime, CrossCorrelatedResult)
-        plt.figure("AutoCorrelated result from Sensor1 and Sensor2")
-        plt.plot(CorrelatedTime, AutoCorrelatedResultSensor1, label=SensorA)
-        plt.plot(CorrelatedTime, AutoCorrelatedResultSensor2, label=SensorB)
-        plt.legend()
-        # CrossCorrelatedResult_Verify = np.correlate(Sensor1Superpositioned_verify, Sensor2Superpositioned_verify, mode="same")
-        # AutoCorrelatedResultSensor1_Verify =  np.correlate(Sensor1Superpositioned_verify, Sensor1Superpositioned_verify, mode ="same")
-        # AutoCorrelatedResultSensor2_Verify = np.correlate(Sensor2Superpositioned_verify, Sensor2Superpositioned_verify, mode="same")
-        # plt.figure("Correlated Result from Sensor1 and Sensor2 (Verify)")
-        # plt.plot(CorrelatedTime, CrossCorrelatedResult_Verify)
-        # plt.figure("AutoCorrelated result from Sensor1 and Sensor2 (Verify)")
-        # plt.plot(CorrelatedTime, AutoCorrelatedResultSensor1_Verify, label=SensorA)
-        # plt.plot(CorrelatedTime, AutoCorrelatedResultSensor2_Verify, label=SensorB)
-        # plt.legend()
-        SaveDict["Result"] = SaveTime.tolist()
-        pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
+        SaveDict = CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2)
     else:
-        result_dict, all_result_dict = NormalAnalysis.main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range)
-        SaveDict = {}
-        for edge in G.edges:
-            source, target = edge
-            SensorHfreq = result_dict[edge]["hfreq"]
-            SensorQfreq = result_dict[edge]["qfreq"]
-            SourceHfreq = all_result_dict[edge]["source"]["hfreq"]
-            SourceQfreq = all_result_dict[edge]["source"]["qfreq"]
-            TargetHfreq = all_result_dict[edge]["target"]["hfreq"]
-            TargetQfreq = all_result_dict[edge]["target"]["qfreq"]
-            SensorHTime = np.real(np.fft.ifft(SensorHfreq, len(SensorHfreq)))
-            SensorQTime = np.real(np.fft.ifft(SensorQfreq, len(SensorQfreq)))
-            SourceHTime = np.real(np.fft.ifft(SourceHfreq, len(SourceHfreq)))
-            SourceQTime = np.real(np.fft.ifft(SourceQfreq, len(SourceQfreq)))
-            TargetHTime = np.real(np.fft.ifft(TargetHfreq, len(TargetHfreq)))
-            TargetQTime = np.real(np.fft.ifft(TargetQfreq, len(TargetQfreq)))
-            plt.figure("({},{}) {}".format(source, target, "Source"))
-            plt.plot(time_range, SourceHTime)
-            plt.figure("({},{}) {}".format(source, target, "Target"))
-            plt.plot(time_range, TargetHTime)
-            time_name = "Pipe {0}-{1} Time".format(source, target)
-            freq_name = "Pipe {0}-{1} Freq".format(source, target)
-            timeHeading = np.array(
-                ["Time", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor", "Flow Sensor",
-                 "Head Target({})".format(target), "Flow Target({})".format(target)])
-            freqHeading = np.array(
-                ["Freq", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor",
-                 "Flow Sensor",
-                 "Head Target({})".format(target), "Flow Target({})".format(target)])
-            SaveTime = np.column_stack(
-                (time_range, SourceHTime, SourceQTime, SensorHTime, SensorQTime, TargetHTime, TargetQTime))
-            SaveFreq = np.column_stack(
-                (freq_range, abs(SourceHfreq), abs(SourceQfreq), abs(SensorHfreq), abs(SensorQfreq), abs(TargetHfreq),
-                 abs(TargetQfreq)))
-            SaveTime = np.row_stack((timeHeading, SaveTime))
-            SaveFreq = np.row_stack((freqHeading, SaveFreq))
-            SaveDict[time_name] = SaveTime.tolist()
-            SaveDict[freq_name] = SaveFreq.tolist()
-        pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
+        SaveDict = NormalAnalysis(G, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range,
+                                  timeArray1)
+    pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
     ProgressPage.destroy()
     pyexcel.free_resources()
     print("File Saved")
     plt.show()
-

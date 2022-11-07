@@ -73,7 +73,7 @@ def TMCalculation(data_pack):
                 for edges in path:
                     if bool(set(edges) & set(EdgesFromSensor)) and not SensorResultSaved[sensor]:
                         SensorPath.append((sensor, edges))
-                        SensorResultSaved[sensor]=True
+                        SensorResultSaved[sensor] = True
     for path in SensorPath:
         sensor, edges = path
         downstreamNode = edges[-1][-1]
@@ -112,7 +112,7 @@ def TMCalculation(data_pack):
                 break
 
 
-def main(Graph, Envir, freq_range): #, SubProgressBar, ProgressPage):
+def main(Graph, Envir, freq_range):  # , SubProgressBar, ProgressPage):
     global G, Sensors_list, SensorResult, i
     G = Graph
     G = node_classification(G)

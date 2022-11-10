@@ -7,9 +7,9 @@ global PipeLength, a, D, U, f, A, Q0, dt, MaxT, HA, HB
 # HB = 39.08
 PipeLength = 1100
 a = 1000  # WaveSpeed
-D = 0.173  # Diameter
-U = 2.13  # FlowVelocity
-f = 0.046  # FrictionFactor
+D = 0.1  # Diameter
+U = 6.37  # FlowVelocity
+f = 0.057  # FrictionFactor
 df = 0.0025
 MaxF = 500
 dt = 1 / MaxF
@@ -106,6 +106,8 @@ def FieldMatrix(freq, L):
     omega = 2 * np.pi * freq
     R = (n * f * (Q0 ** (n - 1))) / (2 * g * D * (A ** n))
     mu = np.sqrt(-((omega ** 2) / (a ** 2)) + ((1j * g * A * omega * R) / (a ** 2)))
+    alpha = np.real(np.sqrt(mu))
+    print(A * R * g / (2 * a))
     Zc = (mu * a ** 2) / (1j * omega * g * A)
     F = np.array([[np.cosh(mu * L), (-1 / Zc) * np.sinh(mu * L), 0],
                   [-Zc * np.sinh(mu * L), np.cosh(mu * L), 0],

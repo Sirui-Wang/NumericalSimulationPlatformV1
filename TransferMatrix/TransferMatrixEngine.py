@@ -29,7 +29,7 @@ def editPipeLength(CopyG, Key, SourceLoc):
 
 def plotImpulseResponse(time, Sensor1, Sensor2, Title):
     # ZeroPeak1 = np.argwhere(abs(Sensor1) < 10)
-    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 60)
+    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 50)
     # Sensor1[ZeroPeak1] = 0
     # Sensor2[ZeroPeak2] = 0
     plt.figure(Title)
@@ -40,7 +40,7 @@ def plotImpulseResponse(time, Sensor1, Sensor2, Title):
 
 def plotCorrelation(time, Sensor1, Sensor2, Title):
     # ZeroPeak1 = np.argwhere(abs(Sensor1) < 10)
-    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 60)
+    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 50)
     # Sensor1[ZeroPeak1] = 0
     # Sensor2[ZeroPeak2] = 0
     CrossCorrelation = np.correlate(Sensor1, Sensor2, mode="same")
@@ -84,12 +84,12 @@ def worker(key_index):
         SumSensor2 = np.add(SumSensor2, Sensor2WNoise)
         # plotCorrelation(timeArray2, Sensor1WNoise, Sensor2WNoise,
         #                 "Sensor Correlation With Noise of {}, source {}".format(key, Pertlocation))
-        print(Pertlocation)
+        # print(Pertlocation)
         # plotCorrelation(timeArray1, Sensor1Time, Sensor2Time,
         #                 "Sensor Correlation W/O Noise of {}, source {}".format(key, Pertlocation))
-        plotImpulseResponse(timeArray1, Sensor1Time, Sensor2Time,
-                            "ImpulseResponse of {} with Source {}".format(key, Pertlocation))
-        plt.show()
+        # plotImpulseResponse(timeArray1, Sensor1Time, Sensor2Time,
+        #                     "ImpulseResponse of {} with Source {}".format(key, Pertlocation))
+        # plt.show()
     return SumSensor1, SumSensor2, PertLocations, key
 
 
@@ -118,8 +118,8 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     SumSensor2 = np.zeros(len(timeArray2))
     PossibleCaseDict = PossibleSourceLocations(G)
     SourceLocationRecord = {}
-    # CoreCount = min(len(G.edges), 12)
-    CoreCount = 1
+    CoreCount = min(len(G.edges), 12)
+    # CoreCount = 1
     with mp.Pool(processes=CoreCount, initializer=init_worker, initargs=(
             (dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1,
              timeArray2),)) as pool:

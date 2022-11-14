@@ -1,7 +1,32 @@
 from TransferMatrix.TMTools import *
 
 
+def field_matrix_single(G, source, target, freq):
+    L = G.edges[source, target]["length"]
+    a = G.edges[source, target]["wave_velocity"]
+    D = G.edges[source, target]["diameter"]
+    fc = G.edges[source, target]["friction_factor"]
+    U = G.edges[source, target]["flow_velocity"]
+    n = 2  # empirical number
+    j = 1j
+    g = 9.81
+    A = (np.pi * D ** 2) / 4  # D = diameter of the pipe
+    Q0 = A * U
+    # Q0 = 0.01
+    omega = 2 * np.pi * freq  # T = Theoretical period
+    R = (n * fc * (Q0 ** (n - 1))) / (2 * g * D * (A ** n))
+    "Field Matrix for single conduit"
+    mu = np.sqrt(-((omega ** 2) / (a ** 2)) + ((j * g * A * omega * R) / (a ** 2)))
+    Zc = (mu * a ** 2) / (j * omega * g * A)
+    F = np.array([[np.cosh(mu * L), (-1 / Zc) * np.sinh(mu * L), 0],
+                  [-Zc * np.sinh(mu * L), np.cosh(mu * L), 0],
+                  [0, 0, 1]])
+    return F, Zc
+
+
 def TMCalculation(data_pack):
+    ReferenceDiameter = 0.3
+    ReferenceArea = 0.3 ** 2 * np.pi / 4
     global SensorResult, i
     freq, branches_dict, sub_matrixes = data_pack
     juncs = list(sub_matrixes.keys())
@@ -46,7 +71,9 @@ def TMCalculation(data_pack):
                     if G.edges[edge]["PertType"] != "":
                         PertLocation = G.edges[edge]["PertLocation"]
                         PertType = G.edges[edge]["PertType"]
-                        S = source_matrix(PertType == "Flow")
+                        D = G.edges[edge]["diameter"]
+                        Area = D ** 2 * np.pi / 4
+                        S = source_matrix(PertType == "Flow", ReferenceArea, Area)
                         if PertLocation == source:
                             U = S @ FieldMatrix @ U
                         else:
@@ -94,7 +121,9 @@ def TMCalculation(data_pack):
             if G.edges[edge]["PertType"] != "":
                 PertLocation = G.edges[edge]["PertLocation"]
                 PertType = G.edges[edge]["PertType"]
-                S = source_matrix(PertType == "Flow")
+                D = G.edges[edge]["diameter"]
+                Area = D ** 2 * np.pi / 4
+                S = source_matrix(PertType == "Flow", ReferenceArea, Area)
                 if PertLocation == source:
                     U = S @ FieldMatrix @ U
                 elif PertLocation == target:

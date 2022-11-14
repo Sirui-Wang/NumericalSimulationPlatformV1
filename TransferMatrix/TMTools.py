@@ -64,27 +64,28 @@ def block_diag_selfmade(*arrs):
     return out
 
 
-def field_matrix_single(G, source, target, freq):
-    L = G.edges[source, target]["length"]
-    a = G.edges[source, target]["wave_velocity"]
-    D = G.edges[source, target]["diameter"]
-    fc = G.edges[source, target]["friction_factor"]
-    U = G.edges[source, target]["flow_velocity"]
-    n = 2  # empirical number
-    j = 1j
-    g = 9.81
-    A = (np.pi * D ** 2) / 4  # D = diameter of the pipe
-    Q0 = A * U
-    # Q0 = 0.01
-    omega = 2 * np.pi * freq  # T = Theoretical period
-    R = (n * fc * (Q0 ** (n - 1))) / (2 * g * D * (A ** n))
-    "Field Matrix for single conduit"
-    mu = np.sqrt(-((omega ** 2) / (a ** 2)) + ((j * g * A * omega * R) / (a ** 2)))
-    Zc = (mu * a ** 2) / (j * omega * g * A)
-    F = np.array([[np.cosh(mu * L), (-1 / Zc) * np.sinh(mu * L), 0],
-                  [-Zc * np.sinh(mu * L), np.cosh(mu * L), 0],
-                  [0, 0, 1]])
-    return F, Zc
+#
+# def field_matrix_single(G, source, target, freq):
+#     L = G.edges[source, target]["length"]
+#     a = G.edges[source, target]["wave_velocity"]
+#     D = G.edges[source, target]["diameter"]
+#     fc = G.edges[source, target]["friction_factor"]
+#     U = G.edges[source, target]["flow_velocity"]
+#     n = 2  # empirical number
+#     j = 1j
+#     g = 9.81
+#     A = (np.pi * D ** 2) / 4  # D = diameter of the pipe
+#     Q0 = A * U
+#     # Q0 = 0.01
+#     omega = 2 * np.pi * freq  # T = Theoretical period
+#     R = (n * fc * (Q0 ** (n - 1))) / (2 * g * D * (A ** n))
+#     "Field Matrix for single conduit"
+#     mu = np.sqrt(-((omega ** 2) / (a ** 2)) + ((j * g * A * omega * R) / (a ** 2)))
+#     Zc = (mu * a ** 2) / (j * omega * g * A)
+#     F = np.array([[np.cosh(mu * L), (-1 / Zc) * np.sinh(mu * L), 0],
+#                   [-Zc * np.sinh(mu * L), np.cosh(mu * L), 0],
+#                   [0, 0, 1]])
+#     return F, Zc
 
 
 def Reverse_field_matrix_single(G, source, target, freq, length):
@@ -110,9 +111,9 @@ def Reverse_field_matrix_single(G, source, target, freq, length):
     return F
 
 
-def source_matrix(isPertFlow):
+def source_matrix(isPertFlow, ReferenceArea=1, Area=1):
     if isPertFlow == True:
-        PMat = [[1, 0, 1],
+        PMat = [[1, 0, Area / ReferenceArea],
                 [0, 1, 0],
                 [0, 0, 1]]
     else:

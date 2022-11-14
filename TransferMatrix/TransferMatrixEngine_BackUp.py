@@ -44,10 +44,10 @@ def plotCorrelation(time, Sensor1, Sensor2, Title):
     # Sensor1[ZeroPeak1] = 0
     # Sensor2[ZeroPeak2] = 0
     CrossCorrelation = np.correlate(Sensor1, Sensor2, mode="same")
-    # CCIndexese = np.argwhere(abs(CrossCorrelation) > 100000000)
-    # for i in CCIndexese:
-    #     print("CC", time[i] - int(time[-1] / 2), CrossCorrelation[i])
-    # print("end-------------------------------")
+    CCIndexese = np.argwhere(abs(CrossCorrelation) > 100000000)
+    for i in CCIndexese:
+        print("CC", time[i] - int(time[-1] / 2), CrossCorrelation[i])
+    print("end-------------------------------")
     plt.figure(Title)
     plt.plot(time - int(time[-1] / 2), CrossCorrelation)
 
@@ -55,15 +55,13 @@ def plotCorrelation(time, Sensor1, Sensor2, Title):
 def worker(key_index):
     global dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2
     key = list(PossibleCaseDict.keys())[key_index]
-    if key == ("C", "D"):
-        print("pause")
     # print(key_index, key)
     Graph, PipeLength, wavespeed = PossibleCaseDict[key]
     SimulationSize = max(int(SimulationSizePerMeter * PipeLength), 1)
-    np.random.seed(key_index)
+    np.random.seed(key_index + 10)
     PertLocations = np.random.uniform(0, PipeLength, SimulationSize)
-    SumSensor1 = np.zeros(len(timeArray1))
-    SumSensor2 = np.zeros(len(timeArray1))
+    SumSensor1 = np.zeros(len(timeArray2))
+    SumSensor2 = np.zeros(len(timeArray2))
     GridSize = wavespeed / MaxFreq
     np.random.seed(key_index + 10)
     # print(PertLocations)
@@ -80,13 +78,10 @@ def worker(key_index):
         Noise = Noise / np.sqrt(NPower)
         Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1)))
         Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2)))
-
         Sensor1WNoise = np.convolve(Sensor1Time, Noise, mode="full")
         Sensor2WNoise = np.convolve(Sensor2Time, Noise, mode="full")
-        CCResult = np.correlate(Sensor1Time, Sensor2Time, mode="same")
-        ACResult = np.correlate(Sensor1Time, Sensor1Time, mode="same")
-        SumSensor1 = np.add(SumSensor1, CCResult)
-        SumSensor2 = np.add(SumSensor2, ACResult)
+        SumSensor1 = np.add(SumSensor1, Sensor1WNoise)
+        SumSensor2 = np.add(SumSensor2, Sensor2WNoise)
         # plotCorrelation(timeArray2, Sensor1WNoise, Sensor2WNoise,
         #                 "Sensor Correlation With Noise of {}, source {}".format(key, Pertlocation))
         # print(Pertlocation)
@@ -95,7 +90,6 @@ def worker(key_index):
         # plotImpulseResponse(timeArray1, Sensor1Time, Sensor2Time,
         #                     "ImpulseResponse of {} with Source {}".format(key, Pertlocation))
         # plt.show()
-
     return SumSensor1, SumSensor2, PertLocations, key
 
 
@@ -120,35 +114,31 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     """Start MultiProcessing by start multiple processs"""
     Sensor1 = Envir["Sensor1"]
     Sensor2 = Envir["Sensor2"]
-    SumSensor1 = np.zeros(len(timeArray1))
-    SumSensor2 = np.zeros(len(timeArray1))
+    SumSensor1 = np.zeros(len(timeArray2))
+    SumSensor2 = np.zeros(len(timeArray2))
     PossibleCaseDict = PossibleSourceLocations(G)
     SourceLocationRecord = {}
     CoreCount = min(len(G.edges), 12)
     # CoreCount = 1
-    CorrelatedTime = timeArray1 - int(((1 / dFreq) / 2))
     with mp.Pool(processes=CoreCount, initializer=init_worker, initargs=(
             (dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1,
              timeArray2),)) as pool:
         for result in pool.map(worker, range(len(list(PossibleCaseDict.keys())))):
             Sensor1Result, Sensor2Result, SourceDist, key = result
-            # plt.figure("Correlated Result from Sensor1 and Sensor2 at {}".format(key))
-            # plt.plot(CorrelatedTime, Sensor1Result)
-            # plt.show()
             SumSensor1 = np.add(SumSensor1, Sensor1Result)
             SumSensor2 = np.add(SumSensor2, Sensor2Result)
             SourceLocationRecord[key] = SourceDist
-    # CrossCorrelatedResult = np.correlate(SumSensor1, SumSensor2, mode="same")
-    # AutoCorrelatedResultSensor1 = np.correlate(SumSensor1, SumSensor1, mode="same")
-    # AutoCorrelatedResultSensor2 = np.correlate(SumSensor2, SumSensor2, mode="same")
-
+    CrossCorrelatedResult = np.correlate(SumSensor1, SumSensor2, mode="same")
+    AutoCorrelatedResultSensor1 = np.correlate(SumSensor1, SumSensor1, mode="same")
+    AutoCorrelatedResultSensor2 = np.correlate(SumSensor2, SumSensor2, mode="same")
+    CorrelatedTime = timeArray2 - ((1 / dFreq))
     SaveTime = np.column_stack(
-        (CorrelatedTime, SumSensor1, SumSensor2))
+        (CorrelatedTime, CrossCorrelatedResult, AutoCorrelatedResultSensor1))
     plt.figure("Correlated Result from Sensor1 and Sensor2")
-    plt.plot(CorrelatedTime, SumSensor1)
+    plt.plot(CorrelatedTime, CrossCorrelatedResult)
     plt.figure("AutoCorrelated result from Sensor1 and Sensor2")
-    plt.plot(CorrelatedTime, SumSensor2, label=Sensor1)
-    # plt.plot(CorrelatedTime, AutoCorrelatedResultSensor2, label=Sensor2)
+    plt.plot(CorrelatedTime, AutoCorrelatedResultSensor1, label=Sensor1)
+    plt.plot(CorrelatedTime, AutoCorrelatedResultSensor2, label=Sensor2)
     plt.legend()
     SaveDict["Result"] = SaveTime.tolist()
     print("--- %s seconds ---" % (time.time() - start_time))

@@ -127,30 +127,40 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     CoreCount = min(len(G.edges), 12)
     # CoreCount = 1
     CorrelatedTime = timeArray1 - int(((1 / dFreq) / 2))
+    result_dict = {}
     with mp.Pool(processes=CoreCount, initializer=init_worker, initargs=(
             (dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1,
              timeArray2),)) as pool:
         for result in pool.map(worker, range(len(list(PossibleCaseDict.keys())))):
             Sensor1Result, Sensor2Result, SourceDist, key = result
+            result_dict[("CC{}".format(key))] = Sensor1Result
+            result_dict[("AC{}".format(key))] = Sensor2Result
             # plt.figure("Correlated Result from Sensor1 and Sensor2 at {}".format(key))
             # plt.plot(CorrelatedTime, Sensor1Result)
             # plt.show()
             SumSensor1 = np.add(SumSensor1, Sensor1Result)
             SumSensor2 = np.add(SumSensor2, Sensor2Result)
             SourceLocationRecord[key] = SourceDist
+    print("test")
     # CrossCorrelatedResult = np.correlate(SumSensor1, SumSensor2, mode="same")
     # AutoCorrelatedResultSensor1 = np.correlate(SumSensor1, SumSensor1, mode="same")
     # AutoCorrelatedResultSensor2 = np.correlate(SumSensor2, SumSensor2, mode="same")
-
-    SaveTime = np.column_stack(
-        (CorrelatedTime, SumSensor1, SumSensor2))
-    plt.figure("Correlated Result from Sensor1 and Sensor2")
-    plt.plot(CorrelatedTime, SumSensor1)
-    plt.figure("AutoCorrelated result from Sensor1 and Sensor2")
-    plt.plot(CorrelatedTime, SumSensor2, label=Sensor1)
-    # plt.plot(CorrelatedTime, AutoCorrelatedResultSensor2, label=Sensor2)
-    plt.legend()
-    SaveDict["Result"] = SaveTime.tolist()
+    TempSaveArray = CorrelatedTime
+    TempHeading = ["Time"]
+    for i in result_dict.keys():
+        TempHeading.append(i)
+        TempSaveArray = np.column_stack((TempSaveArray, result_dict[i]))
+    tempSaveDict = np.row_stack((np.array(TempHeading), TempSaveArray))
+    # SaveTime = np.column_stack(
+    #     (CorrelatedTime, SumSensor1, SumSensor2))
+    # plt.figure("Correlated Result from Sensor1 and Sensor2")
+    # plt.plot(CorrelatedTime, SumSensor1)
+    # plt.figure("AutoCorrelated result from Sensor1 and Sensor2")
+    # plt.plot(CorrelatedTime, SumSensor2, label=Sensor1)
+    # # plt.plot(CorrelatedTime, AutoCorrelatedResultSensor2, label=Sensor2)
+    # plt.legend()
+    # SaveDict["Result"] = SaveTime.tolist()
+    SaveDict["Result"] = tempSaveDict.tolist()
     print("--- %s seconds ---" % (time.time() - start_time))
     return SaveDict
 

@@ -1,6 +1,9 @@
+import math
 import multiprocessing as mp
 import os
+import threading
 import time
+from multiprocessing.pool import ThreadPool
 from tkinter import filedialog
 
 import pyexcel
@@ -52,50 +55,68 @@ def plotCorrelation(time, Sensor1, Sensor2, Title):
     plt.plot(time - int(time[-1] / 2), CrossCorrelation)
 
 
+def init_worker2(shared_data2):
+    global GridSize, Graph, key, Envir, freq_range, ThreadID, key_index
+    GridSize, Graph, key, Envir, freq_range, ThreadID, key_index = shared_data2
+
+
+def worker2(Pertlocation):
+    global GridSize, Graph, key, Envir, freq_range, ThreadID, key_index
+    Pertlocation = round_nearest2(Pertlocation, GridSize)
+    NewGraph = editPipeLength(copy.deepcopy(Graph), key, Pertlocation)
+    SensorResult = NoiseAnalysis.main(NewGraph, Envir, freq_range)
+    return SensorResult, Pertlocation
+
+
 def worker(key_index):
-    global dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2
+    global dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2, ref_length
+    ThreadID = threading.get_ident()
     key = list(PossibleCaseDict.keys())[key_index]
-    # print(key_index, key)
     Graph, PipeLength, wavespeed = PossibleCaseDict[key]
     SimulationSize = max(int(SimulationSizePerMeter * PipeLength), 1)
     np.random.seed(key_index + 10)
     PertLocations = np.random.uniform(0, PipeLength, SimulationSize)
+    print(PertLocations)
+    print("Current Thread ID: {}, Current Pipeline ID: {}, with Pert : {}".format(ThreadID, key, PertLocations))
     SumSensor1 = np.zeros(len(timeArray2))
     SumSensor2 = np.zeros(len(timeArray2))
     GridSize = wavespeed / MaxFreq
-    np.random.seed(key_index + 10)
     # print(PertLocations)
-    print(key)
-    for simulation in tqdm(range(len(PertLocations))):
-        Pertlocation = PertLocations[simulation]
-        Pertlocation = round_nearest2(Pertlocation, GridSize)
-        NewGraph = editPipeLength(copy.deepcopy(Graph), key, Pertlocation)
-        SensorResult = NoiseAnalysis.main(NewGraph, Envir, freq_range)
-        HFreqResultS1 = SensorResult[Sensor1]["hfreq"]
-        HFreqResultS2 = SensorResult[Sensor2]["hfreq"]
-        Noise = np.random.normal(0, 0.1, len(timeArray1))
-        NPower = np.sum((abs(Noise)) ** 2) / len(Noise)
-        Noise = Noise / np.sqrt(NPower)
-        Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1)))
-        Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2)))
-        Sensor1WNoise = np.convolve(Sensor1Time, Noise, mode="full")
-        Sensor2WNoise = np.convolve(Sensor2Time, Noise, mode="full")
-        SumSensor1 = np.add(SumSensor1, Sensor1WNoise)
-        SumSensor2 = np.add(SumSensor2, Sensor2WNoise)
-        # plotCorrelation(timeArray2, Sensor1WNoise, Sensor2WNoise,
-        #                 "Sensor Correlation With Noise of {}, source {}".format(key, Pertlocation))
-        # print(Pertlocation)
-        # plotCorrelation(timeArray1, Sensor1Time, Sensor2Time,
-        #                 "Sensor Correlation W/O Noise of {}, source {}".format(key, Pertlocation))
-        # plotImpulseResponse(timeArray1, Sensor1Time, Sensor2Time,
-        #                     "ImpulseResponse of {} with Source {}".format(key, Pertlocation))
-        # plt.show()
+    if SimulationSize * 2 > ref_length:
+        SubCoreCount = min(math.ceil(SimulationSize / ref_length), 5)
+    else:
+        SubCoreCount = 1
+    with mp.Pool(processes=SubCoreCount, initializer=init_worker2, initargs=(
+            (GridSize, Graph, key, Envir, freq_range, ThreadID, key_index),)) as pool:
+        for result in tqdm(pool.imap(worker2, PertLocations), total=SimulationSize):
+            SensorResult, Pertlocation = result
+            np.random.seed(np.int(100000 * key_index) + np.int(Pertlocation))
+            print(np.int(100000 * key_index) + np.int(Pertlocation))
+            HFreqResultS1 = SensorResult[Sensor1]["hfreq"]
+            HFreqResultS2 = SensorResult[Sensor2]["hfreq"]
+            Noise = np.random.normal(0, 0.1, len(timeArray1))
+            NPower = np.sum((abs(Noise)) ** 2) / len(Noise)
+            Noise = Noise / np.sqrt(NPower)
+            Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1)))
+            Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2)))
+            Sensor1WNoise = np.convolve(Sensor1Time, Noise, mode="full")
+            Sensor2WNoise = np.convolve(Sensor2Time, Noise, mode="full")
+            SumSensor1 = np.add(SumSensor1, Sensor1WNoise)
+            SumSensor2 = np.add(SumSensor2, Sensor2WNoise)
+            # plotCorrelation(timeArray2, Sensor1WNoise, Sensor2WNoise,
+            #                 "Sensor Correlation With Noise of {}, source {}".format(key, Pertlocation))
+            # print(Pertlocation)
+            # plotCorrelation(timeArray1, Sensor1Time, Sensor2Time,
+            #                 "Sensor Correlation W/O Noise of {}, source {}".format(key, Pertlocation))
+            # plotImpulseResponse(timeArray1, Sensor1Time, Sensor2Time,
+            #                     "ImpulseResponse of {} with Source {}".format(key, Pertlocation))
+            # plt.show()
     return SumSensor1, SumSensor2, PertLocations, key
 
 
 def init_worker(shared_data):
-    global dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2
-    dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2 = shared_data
+    global dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2, ref_length
+    dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2, ref_length = shared_data
 
 
 def PossibleSourceLocations(G):
@@ -118,11 +139,12 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     SumSensor2 = np.zeros(len(timeArray2))
     PossibleCaseDict = PossibleSourceLocations(G)
     SourceLocationRecord = {}
+    ref_length = 25
     CoreCount = min(len(G.edges), 12)
     # CoreCount = 1
-    with mp.Pool(processes=CoreCount, initializer=init_worker, initargs=(
+    with ThreadPool(processes=CoreCount, initializer=init_worker, initargs=(
             (dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1,
-             timeArray2),)) as pool:
+             timeArray2, ref_length),)) as pool:
         for result in pool.map(worker, range(len(list(PossibleCaseDict.keys())))):
             Sensor1Result, Sensor2Result, SourceDist, key = result
             SumSensor1 = np.add(SumSensor1, Sensor1Result)

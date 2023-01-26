@@ -26,7 +26,8 @@ def field_matrix_single(G, source, target, freq):
 
 def TMCalculation(data_pack):
     ReferenceDiameter = 0.3
-    ReferenceArea = 0.3 ** 2 * np.pi / 4
+    Ratio = -2884.221
+    ReferenceArea = ReferenceDiameter ** 2 * np.pi / 4
     global SensorResult, i
     freq, branches_dict, sub_matrixes = data_pack
     juncs = list(sub_matrixes.keys())
@@ -56,7 +57,14 @@ def TMCalculation(data_pack):
                 U = np.identity(3)
                 for edge in path[-1::-1]:
                     source, target = edge
-                    FieldMatrix, Zc = field_matrix_single(G, source, target, freq)
+                    length = G.edges[source, target]["length"]
+                    if length >= 0.001:
+                        FieldMatrix, Zc = field_matrix_single(G, source, target, freq)
+                    else:
+                        FieldMatrix = np.array([[1, 0, 0],
+                                                [Ratio, 1, 0],
+                                                [0, 0, 1]])
+                        Zc = 1000 * 9.81 * Ratio + 1000 * 1000 / ReferenceArea
                     if direction == "upstream" and len(path) == 1:
                         Impedances[0] = Zc
                     elif direction == "downstream" and len(path) == 1:
@@ -117,7 +125,13 @@ def TMCalculation(data_pack):
         U = np.identity(3)
         for edge in edges[-1::-1]:
             source, target = edge
-            FieldMatrix, Zc = field_matrix_single(G, source, target, freq)
+            length = G.edges[source, target]["length"]
+            if length >= 0.001:
+                FieldMatrix, Zc = field_matrix_single(G, source, target, freq)
+            else:
+                FieldMatrix = np.array([[1, 0, 0],
+                                        [Ratio, 1, 0],
+                                        [0, 0, 1]])
             if G.edges[edge]["PertType"] != "":
                 PertLocation = G.edges[edge]["PertLocation"]
                 PertType = G.edges[edge]["PertType"]

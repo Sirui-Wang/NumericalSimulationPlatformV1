@@ -76,29 +76,27 @@ def worker(key_index):
     SimulationSize = max(int(SimulationSizePerMeter * PipeLength), 1)
     np.random.seed(key_index + 10)
     PertLocations = np.random.uniform(0, PipeLength, SimulationSize)
-    print(PertLocations)
-    print("Current Thread ID: {}, Current Pipeline ID: {}, with Pert : {}".format(ThreadID, key, PertLocations))
-    SumSensor1 = np.zeros(len(timeArray2))
-    SumSensor2 = np.zeros(len(timeArray2))
-    GridSize = wavespeed / MaxFreq
     # print(PertLocations)
-    if SimulationSize * 2 > ref_length:
+    # print("Current Thread ID: {}, Current Pipeline ID: {}, with Pert : {}".format(ThreadID, key, PertLocations))
+    SumSensor1 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
+    SumSensor2 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
+    GridSize = wavespeed / MaxFreq
+    try:
         SubCoreCount = min(math.ceil(SimulationSize / ref_length), 5)
-    else:
+    except ZeroDivisionError:
         SubCoreCount = 1
     with mp.Pool(processes=SubCoreCount, initializer=init_worker2, initargs=(
             (GridSize, Graph, key, Envir, freq_range, ThreadID, key_index),)) as pool:
         for result in tqdm(pool.imap(worker2, PertLocations), total=SimulationSize):
             SensorResult, Pertlocation = result
             np.random.seed(np.int(100000 * key_index) + np.int(Pertlocation))
-            print(np.int(100000 * key_index) + np.int(Pertlocation))
             HFreqResultS1 = SensorResult[Sensor1]["hfreq"]
             HFreqResultS2 = SensorResult[Sensor2]["hfreq"]
-            Noise = np.random.normal(0, 0.1, len(timeArray1))
+            Noise = np.random.normal(0, 0.1, 50 * (len(timeArray1) - 1) + 1)
             NPower = np.sum((abs(Noise)) ** 2) / len(Noise)
             Noise = Noise / np.sqrt(NPower)
-            Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, len(HFreqResultS1)))
-            Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, len(HFreqResultS2)))
+            Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, (len(HFreqResultS1))))
+            Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, (len(HFreqResultS2))))
             Sensor1WNoise = np.convolve(Sensor1Time, Noise, mode="full")
             Sensor2WNoise = np.convolve(Sensor2Time, Noise, mode="full")
             SumSensor1 = np.add(SumSensor1, Sensor1WNoise)
@@ -128,18 +126,24 @@ def PossibleSourceLocations(G):
     return CaseDict
 
 
-def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2):
+def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2, LongNoiseTimeArray):
     SaveDict = {}
     start_time = time.time()
     SimulationSizePerMeter = float(Envir["SimSize"])
+    """Find GCD for subprocess core count"""
+    length_list = []
+    for edge in list(G.edges.keys()):
+        length_list.append(int(G.edges[edge]["length"]))
+    length_median = np.median(length_list)
+    ref_length = int(length_median * SimulationSizePerMeter)
+    print(ref_length)
     """Start MultiProcessing by start multiple processs"""
     Sensor1 = Envir["Sensor1"]
     Sensor2 = Envir["Sensor2"]
-    SumSensor1 = np.zeros(len(timeArray2))
-    SumSensor2 = np.zeros(len(timeArray2))
+    SumSensor1 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
+    SumSensor2 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
     PossibleCaseDict = PossibleSourceLocations(G)
     SourceLocationRecord = {}
-    ref_length = 25
     CoreCount = min(len(G.edges), 12)
     # CoreCount = 1
     with ThreadPool(processes=CoreCount, initializer=init_worker, initargs=(
@@ -153,10 +157,10 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     CrossCorrelatedResult = np.correlate(SumSensor1, SumSensor2, mode="same")
     AutoCorrelatedResultSensor1 = np.correlate(SumSensor1, SumSensor1, mode="same")
     AutoCorrelatedResultSensor2 = np.correlate(SumSensor2, SumSensor2, mode="same")
-    CorrelatedTime = timeArray2 - ((1 / dFreq))
+    CorrelatedTime = LongNoiseTimeArray - np.median(LongNoiseTimeArray)
     SaveTime = np.column_stack(
         (CorrelatedTime, CrossCorrelatedResult, AutoCorrelatedResultSensor1))
-    plt.figure("Correlated Result from Sensor1 and Sensor2")
+    plt.figure("Cross Correlated Result from Sensor1 and Sensor2")
     plt.plot(CorrelatedTime, CrossCorrelatedResult)
     plt.figure("AutoCorrelated result from Sensor1 and Sensor2")
     plt.plot(CorrelatedTime, AutoCorrelatedResultSensor1, label=Sensor1)
@@ -221,11 +225,11 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     dFreq = float(Envir["df"])
     MaxFreq = int(Envir["MaxFreq"])
     freq_range = np.arange(0, MaxFreq + dFreq, dFreq)
-    timeArray1 = np.arange(0, (1 / dFreq) + (1 / MaxFreq), 1 / MaxFreq)
+    timeArray1 = np.arange(0, (1 / dFreq) + (1 / MaxFreq), (1 / MaxFreq))
     timeArray2 = np.arange(0, (1 / dFreq) * 2 + (1 / MaxFreq), 1 / MaxFreq)
-    timeArray4 = np.arange(0, (1 / dFreq) * 4 + (1 / MaxFreq), 1 / MaxFreq)
+    LongNoiseTimeArray = np.arange(0, (1 / dFreq) * 51 + (1 / MaxFreq), 1 / MaxFreq)
     if Envir["FreqMode"] == "Randomized Noise":
-        SaveDict = CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2)
+        SaveDict = CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2, LongNoiseTimeArray)
     else:
         SaveDict = NormalAnalysis(G, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range,
                                   timeArray1)
@@ -234,3 +238,6 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     pyexcel.free_resources()
     print("File Saved")
     plt.show()
+    active = mp.active_children()
+    for child in active:
+        child.terminate()

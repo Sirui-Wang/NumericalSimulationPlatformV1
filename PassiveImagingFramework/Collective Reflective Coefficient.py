@@ -15,7 +15,7 @@ a2 = 1000
 Z2 = ro * a2 / Area2
 
 df = 0.01
-maxf = 1000
+maxf = 100
 
 print("Z1 =", Z1)
 print("Z2 =", Z2)

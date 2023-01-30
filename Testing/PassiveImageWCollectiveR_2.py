@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy
 import numpy as np
+import pyexcel
 from tqdm import tqdm
 
 D = 0.3
@@ -23,6 +24,7 @@ fault_length = 150
 L1 = -50
 dy = 1
 alpha = 4.49666e-5
+blockage_alpha = 0.0018473
 Y_SUM = np.zeros(len(omega))
 R_Freq = np.array(np.genfromtxt("ReflectionCoefficient.csv", delimiter=",", dtype=complex))
 T_Freq = np.array(np.genfromtxt("TransmissionCoefficient.csv", delimiter=",", dtype=complex))
@@ -34,6 +36,7 @@ time_rotated = time - (1 / df) / 2
 Pert_Sum = np.zeros(len(time))
 """Y1, -1550 ~ -300"""
 for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
+    # for y in tqdm(range(-590, -h1, dy)):
     """Sensor 1"""
     SgnFunction = (1 / (j * omega))
     Sensor1Direct = ((A * a * np.exp(((alpha * a + j * omega) * (h1 + y)) / a)) / 2)
@@ -42,9 +45,12 @@ for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
     Sensor1SignalTime = np.real(np.fft.ifft(Sensor1SignalFreq, (len(Sensor1SignalFreq))))
     """Sensor 2 - Complex Conjugate"""
     Sensor2Direct = ((-A * T_Freq[::-1] * a * np.exp((-(omega * j * (y - h2)) / a) + ((y - h2) * alpha))) / 2)
+    Sensor2Direct_NonCongugate = np.exp(-blockage_alpha * 150) * A * T_Freq * a * np.exp(
+        ((y - h2) * (omega * j + alpha * a)) / a) / 2
     Sensor2Scattered = np.zeros(len(omega), dtype=complex)
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
+    # Sensor2SignalTime_NonConjugate = np.real(np.fft.ifft(Sensor2Direct_NonCongugate, (len(Sensor2Direct_NonCongugate))))
     """Frequency domain multiplication - time domain cross correlation"""
     Y1CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
     Y1CC_Time = np.real(np.fft.ifft(Y1CC_Freq, (len(Y1CC_Freq)))) * -1
@@ -151,5 +157,11 @@ for y in tqdm(range(h2, int(PipeLength / 2) - fault_length, dy)):
     # plt.show()
     Pert_Sum += Y4CC_Time
 
+SaveDict = {}
+SaveTime = np.column_stack(
+    (time, Pert_Sum))
+SaveDict["Result"] = SaveTime.tolist()
+pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name="PassiveImagingResult_Excel.xlsx")
+pyexcel.free_resources()
 plt.plot(time_rotated, Pert_Sum)
 plt.show()

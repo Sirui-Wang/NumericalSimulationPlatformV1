@@ -7,9 +7,9 @@ global PipeLength, a, D, U, f, A, Q0, dt, MaxT, HA, HB
 # HB = 39.08
 PipeLength = 3100
 a = 1000  # WaveSpeed
-D = 0.3  # Diameter
-U = 0.71  # FlowVelocity
-f = 0.038  # FrictionFactor
+D = 0.1  # Diameter
+U = 6.37  # FlowVelocity
+f = 0.058  # FrictionFactor
 df = 0.0025
 MaxF = 500
 dt = 1 / MaxF

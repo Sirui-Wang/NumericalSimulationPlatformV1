@@ -7,6 +7,7 @@ from multiprocessing.pool import ThreadPool
 from tkinter import filedialog
 
 import pyexcel
+import scipy as sp
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
@@ -38,7 +39,6 @@ def plotImpulseResponse(time, Sensor1, Sensor2, Title):
     plt.plot(time, Sensor1, label="Sensor1")
     plt.plot(time, Sensor2, label="Sensor2")
     plt.legend()
-    plt.show()
 
 
 def plotCorrelation(time, Sensor1, Sensor2, Title):
@@ -46,11 +46,12 @@ def plotCorrelation(time, Sensor1, Sensor2, Title):
     # ZeroPeak2 = np.argwhere(abs(Sensor2) < 50)
     # Sensor1[ZeroPeak1] = 0
     # Sensor2[ZeroPeak2] = 0
-    CrossCorrelation = np.correlate(Sensor1, Sensor2, mode="same")
-    CCIndexese = np.argwhere(abs(CrossCorrelation) > 100000000)
-    for i in CCIndexese:
-        print("CC", time[i] - int(time[-1] / 2), CrossCorrelation[i])
-    print("end-------------------------------")
+    # CrossCorrelation = np.correlate(Sensor1, Sensor2, mode="same")
+    # CCIndexese = np.argwhere(abs(CrossCorrelation) > 100000000)
+    CrossCorrelation = sp.signal.correlate(Sensor1, Sensor2, mode="same", method="fft")
+    # for i in CCIndexese:
+    #     print("CC", time[i] - int(time[-1] / 2), CrossCorrelation[i])
+    # print("end-------------------------------")
     plt.figure(Title)
     plt.plot(time - int(time[-1] / 2), CrossCorrelation)
 
@@ -95,7 +96,9 @@ def worker(key_index):
             HFreqResultS2 = SensorResult[Sensor2]["hfreq"]
             Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, (len(HFreqResultS1))))
             Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, (len(HFreqResultS2))))
-            plotImpulseResponse(timeArray1, Sensor1Time, Sensor2Time, "IRF")
+            # plotImpulseResponse(timeArray1, Sensor1Time, Sensor2Time, "IRF with pert at {}".format(Pertlocation))
+            # plotCorrelation(timeArray1, Sensor1Time, Sensor2Time, "CC")
+            # plt.show()
             CrossCorrelatedResult = np.correlate(Sensor1Time, Sensor2Time, mode="same")
             AutoCorrelatedResultSensor1 = np.correlate(Sensor1Time, Sensor1Time, mode="same")
             AutoCorrelatedResultSensor2 = np.correlate(Sensor2Time, Sensor2Time, mode="same")
@@ -138,8 +141,8 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     AC2Sum = np.zeros(len(timeArray1))
     PossibleCaseDict = PossibleSourceLocations(G)
     SourceLocationRecord = {}
-    # CoreCount = min(len(G.edges), 12)
-    CoreCount = 1
+    CoreCount = min(len(G.edges), 12)
+    # CoreCount = 1
     with ThreadPool(processes=CoreCount, initializer=init_worker, initargs=(
             (dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1,
              timeArray2, ref_length),)) as pool:

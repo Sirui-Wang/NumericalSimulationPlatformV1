@@ -12,9 +12,9 @@ ro = 1000
 a = 1000
 Z = ro * a / A
 j = 1j
-df = 0.01
-maxf = 100
-FreqRange = np.arange(df, maxf + df, df)
+df = 0.1
+maxf = 1000
+FreqRange = np.arange(0, maxf + df, df)
 omega = 2 * np.pi * FreqRange
 k = omega / a
 PipeLength = 3100
@@ -24,13 +24,13 @@ fault_length = 150
 L1 = -50
 dy = 1
 alpha = 4.49666e-5
-blockage_alpha = 0.0018473
+# blockage_alpha = 0.0018473
 Y_SUM = np.zeros(len(omega))
 R_Freq = np.array(np.genfromtxt("ReflectionCoefficient.csv", delimiter=",", dtype=complex))
 T_Freq = np.array(np.genfromtxt("TransmissionCoefficient.csv", delimiter=",", dtype=complex))
 R = np.real(np.fft.ifft(R_Freq, (len(R_Freq))))
 T = np.real(np.fft.ifft(T_Freq, (len(T_Freq))))
-time = np.arange(1 / maxf, (1 / df) + 1 / maxf, 1 / maxf)
+time = np.arange(0, (1 / df) + 1 / maxf, 1 / maxf)
 time_rotated = time - (1 / df) / 2
 
 Pert_Sum = np.zeros(len(time))
@@ -38,22 +38,22 @@ Pert_Sum = np.zeros(len(time))
 for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
     # for y in tqdm(range(-590, -h1, dy)):
     """Sensor 1"""
-    SgnFunction = (1 / (j * omega))
+    # SgnFunction = (1 / (j * omega))
     Sensor1Direct = ((A * a * np.exp(((alpha * a + j * omega) * (h1 + y)) / a)) / 2)
     Sensor1Scattered = ((A * R_Freq * a * np.exp(-(alpha * a + j * omega) * (h1 + 2 * L1 - y) / a)) / 2)
     Sensor1SignalFreq = Sensor1Direct + Sensor1Scattered
     Sensor1SignalTime = np.real(np.fft.ifft(Sensor1SignalFreq, (len(Sensor1SignalFreq))))
     """Sensor 2 - Complex Conjugate"""
     Sensor2Direct = ((-A * T_Freq[::-1] * a * np.exp((-(omega * j * (y - h2)) / a) + ((y - h2) * alpha))) / 2)
-    Sensor2Direct_NonCongugate = np.exp(-blockage_alpha * 150) * A * T_Freq * a * np.exp(
-        ((y - h2) * (omega * j + alpha * a)) / a) / 2
+    # Sensor2Direct_NonCongugate = np.exp(-blockage_alpha * 150) * A * T_Freq * a * np.exp(
+    #     ((y - h2) * (omega * j + alpha * a)) / a) / 2
     Sensor2Scattered = np.zeros(len(omega), dtype=complex)
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
     # Sensor2SignalTime_NonConjugate = np.real(np.fft.ifft(Sensor2Direct_NonCongugate, (len(Sensor2Direct_NonCongugate))))
     """Frequency domain multiplication - time domain cross correlation"""
     Y1CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
-    Y1CC_Time = np.real(np.fft.ifft(Y1CC_Freq, (len(Y1CC_Freq)))) * -1
+    Y1CC_Time = np.real(np.fft.ifft(Y1CC_Freq, (len(Y1CC_Freq))))*-1
     # print(math.ceil(len(Y1CC_Time) / 2) - 1)
     Y1CC_Time = numpy.roll(Y1CC_Time, math.ceil(len(Y1CC_Time) / 2) - 1)
     """Debug Verification"""
@@ -72,7 +72,7 @@ for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
 """Y2, -300 ~ -50"""
 for y in tqdm(range(-h1, L1, dy)):
     """Sensor 1"""
-    SgnFunction = (1 / (j * omega))
+    # SgnFunction = (1 / (j * omega))
     Sensor1Direct = ((A * a * np.exp((-(h1 + y) * (omega * j + alpha * a)) / a)) / 2)
     Sensor1Scattered = ((A * R_Freq * a * np.exp((-(h1 + 2 * L1 - y) * (omega * j + alpha * a)) / a)) / 2)
     Sensor1SignalFreq = Sensor1Direct + Sensor1Scattered

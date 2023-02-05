@@ -17,7 +17,7 @@ a2 = 1000
 Z2 = ro * a2 / Area2
 """Frequency Range Configuration"""
 df = 0.01
-maxf = 1000
+maxf = 100
 frequencyRange = np.arange(df, maxf + df, df)
 time = np.arange(1 / maxf, (1 / df) + 1 / maxf, 1 / maxf)
 """Define other parameters"""

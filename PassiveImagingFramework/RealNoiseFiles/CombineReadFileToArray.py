@@ -18,6 +18,6 @@ for filename in os.listdir(dirname):
 NoiseSequence = np.array(NoiseSequence)
 NoiseSequence.tofile("NoiseSequence.csv", sep=",")
 print("Completed Reading Noise")
-AlphaStablePara = levy.fit_levy(NoiseSequence)
+AlphaStablePara = levy.fit_levy(NoiseSequence,beta=0.0)
 print(AlphaStablePara)
 

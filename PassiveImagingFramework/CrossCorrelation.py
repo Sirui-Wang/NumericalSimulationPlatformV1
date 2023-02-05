@@ -5,6 +5,7 @@ import numpy
 import numpy as np
 import pyexcel
 from tqdm import tqdm
+import PassiveImagingFramework.RealNoiseFiles.GenerateNoise as GenerateNoise
 
 D = 0.3
 A = (np.pi * D ** 2) / 4
@@ -34,6 +35,7 @@ time = np.arange(0, (1 / df) + 1 / maxf, 1 / maxf)
 time_rotated = time - (1 / df) / 2
 
 Pert_Sum = np.zeros(len(time))
+Pert_Sum_withNoise = np.zeros(len(time))
 """Y1, -1550 ~ -300"""
 for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
     # for y in tqdm(range(-590, -h1, dy)):
@@ -51,11 +53,15 @@ for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
     # Sensor2SignalTime_NonConjugate = np.real(np.fft.ifft(Sensor2Direct_NonCongugate, (len(Sensor2Direct_NonCongugate))))
+    """Noise"""
+    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Real")
+    CCNoise = np.correlate(Noise, Noise, mode="same")
     """Frequency domain multiplication - time domain cross correlation"""
     Y1CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
     Y1CC_Time = np.real(np.fft.ifft(Y1CC_Freq, (len(Y1CC_Freq))))*-1
     # print(math.ceil(len(Y1CC_Time) / 2) - 1)
     Y1CC_Time = numpy.roll(Y1CC_Time, math.ceil(len(Y1CC_Time) / 2) - 1)
+    Y1CC_Time_Noise = np.convolve(Y1CC_Time, CCNoise, mode="same")
     """Debug Verification"""
     # plt.figure(1)
     # plt.plot(time, Sensor1SignalTime,label="sensor1")
@@ -68,7 +74,7 @@ for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
     # plt.plot(time_rotated, Y1CC_Time)
     # plt.show()
     Pert_Sum += Y1CC_Time
-
+    Pert_Sum_withNoise += Y1CC_Time_Noise
 """Y2, -300 ~ -50"""
 for y in tqdm(range(-h1, L1, dy)):
     """Sensor 1"""
@@ -82,11 +88,15 @@ for y in tqdm(range(-h1, L1, dy)):
     Sensor2Scattered = np.zeros(len(omega), dtype=complex)
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
+    """Noise"""
+    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Real")
+    CCNoise = np.correlate(Noise, Noise, mode="same")
     """Frequency domain multiplication - time domain cross correlation"""
     Y2CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
     Y2CC_Time = np.real(np.fft.ifft(Y2CC_Freq, (len(Y2CC_Freq)))) * -1
     # print(math.ceil(len(Y2CC_Time) / 2) - 1)
     Y2CC_Time = numpy.roll(Y2CC_Time, math.ceil(len(Y2CC_Time) / 2) - 1)
+    Y2CC_Time_Noise = np.convolve(Y2CC_Time, CCNoise, mode="same")
     # """Debug Verification"""
     # plt.figure(1)
     # plt.plot(time, Sensor1SignalTime)
@@ -98,7 +108,7 @@ for y in tqdm(range(-h1, L1, dy)):
     # plt.plot(time_rotated, Y2CC_Time)
     # plt.show()
     Pert_Sum += Y2CC_Time
-
+    Pert_Sum_withNoise += Y2CC_Time_Noise
 """Y3, -50 ~ 300"""
 for y in tqdm(range(L1, h2, dy)):
     """Sensor 1"""
@@ -111,11 +121,15 @@ for y in tqdm(range(L1, h2, dy)):
     Sensor2Scattered = -(A * R_Freq[::-1] * a * np.exp((h2 + y - 2 * L1) * (omega * j - alpha * a) / a)) / (2)
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
+    """Noise"""
+    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Real")
+    CCNoise = np.correlate(Noise, Noise, mode="same")
     """Frequency domain multiplication - time domain cross correlation"""
     Y3CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
     Y3CC_Time = np.real(np.fft.ifft(Y3CC_Freq, (len(Y3CC_Freq)))) * -1
     # print(math.ceil(len(Y3CC_Time) / 2) - 1)
     Y3CC_Time = numpy.roll(Y3CC_Time, math.ceil(len(Y3CC_Time) / 2) - 1)
+    Y3CC_Time_Noise = np.convolve(Y3CC_Time, CCNoise, mode="same")
     # """Debug Verification"""
     # plt.figure(1)
     # plt.plot(time, Sensor1SignalTime)
@@ -127,6 +141,7 @@ for y in tqdm(range(L1, h2, dy)):
     # plt.plot(time_rotated, Y3CC_Time)
     # plt.show()
     Pert_Sum += Y3CC_Time
+    Pert_Sum_withNoise += Y3CC_Time_Noise
 """Y4, 300 ~ 1550"""
 for y in tqdm(range(h2, int(PipeLength / 2) - fault_length, dy)):
     """Sensor 1"""
@@ -139,11 +154,15 @@ for y in tqdm(range(h2, int(PipeLength / 2) - fault_length, dy)):
     Sensor2Scattered = -(A * R_Freq[::-1] * a * np.exp((h2 + y - 2 * L1) * (omega * j - alpha * a) / a)) / 2
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
+    """Noise"""
+    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Real")
+    CCNoise = np.correlate(Noise, Noise, mode="same")
     """Frequency domain multiplication - time domain cross correlation"""
     Y4CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
     Y4CC_Time = np.real(np.fft.ifft(Y4CC_Freq, (len(Y4CC_Freq)))) * -1
     # print(math.ceil(len(Y4CC_Time) / 2) - 1)
     Y4CC_Time = numpy.roll(Y4CC_Time, math.ceil(len(Y4CC_Time) / 2) - 1)
+    Y4CC_Time_Noise = np.convolve(Y4CC_Time, CCNoise, mode="same")
     """Debug Verification"""
     # plt.figure(1)
     # plt.plot(time, Sensor1SignalTime,label="sensor1")
@@ -156,12 +175,16 @@ for y in tqdm(range(h2, int(PipeLength / 2) - fault_length, dy)):
     # plt.plot(time_rotated, Y4CC_Time)
     # plt.show()
     Pert_Sum += Y4CC_Time
+    Pert_Sum_withNoise += Y4CC_Time_Noise
 
 SaveDict = {}
 SaveTime = np.column_stack(
-    (time, Pert_Sum))
+    (time, Pert_Sum, Pert_Sum_withNoise))
 SaveDict["Result"] = SaveTime.tolist()
 pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name="PassiveImagingResult_Excel.xlsx")
 pyexcel.free_resources()
+plt.figure("No Noise")
 plt.plot(time_rotated, Pert_Sum)
+plt.figure("With Noise")
+plt.plot(time_rotated, Pert_Sum_withNoise)
 plt.show()

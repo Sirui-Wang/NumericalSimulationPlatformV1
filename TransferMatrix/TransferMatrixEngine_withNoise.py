@@ -5,6 +5,7 @@ import threading
 import time
 from multiprocessing.pool import ThreadPool
 from tkinter import filedialog
+import PassiveImagingFramework.RealNoiseFiles.GenerateNoise as GenerateNoise
 
 import pyexcel
 from matplotlib import pyplot as plt
@@ -92,9 +93,7 @@ def worker(key_index):
             np.random.seed(np.int(100000 * key_index) + np.int(Pertlocation))
             HFreqResultS1 = SensorResult[Sensor1]["hfreq"]
             HFreqResultS2 = SensorResult[Sensor2]["hfreq"]
-            Noise = np.random.normal(0, 0.1, 50 * (len(timeArray1) - 1) + 1)
-            NPower = np.sum((abs(Noise)) ** 2) / len(Noise)
-            Noise = Noise / np.sqrt(NPower)
+            Noise = GenerateNoise.Gen(50 * (len(timeArray1) - 1) + 1, "Real")
             Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, (len(HFreqResultS1))))
             Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, (len(HFreqResultS2))))
             Sensor1WNoise = np.convolve(Sensor1Time, Noise, mode="full")

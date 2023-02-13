@@ -155,7 +155,7 @@ def TMCalculation(data_pack):
                 break
 
 
-def main(Graph, Envir, freq_range):  # , SubProgressBar, ProgressPage):
+def main(Graph, Envir, freq_range, Sensors):  # , SubProgressBar, ProgressPage):
     global G, Sensors_list, SensorResult, i
     G = Graph
     G = node_classification(G)
@@ -163,7 +163,7 @@ def main(Graph, Envir, freq_range):  # , SubProgressBar, ProgressPage):
     branches_dict = assign_direction(G, branches_dict)
     branches_dict = SortByJunc(G, branches_dict)
     sub_matrixes = InitializeSubMatrixes(branches_dict, G)
-    Sensors_list = [Envir["Sensor1"], Envir["Sensor2"]]
+    Sensors_list = Sensors
     SensorResult = dict.fromkeys(Sensors_list)
     for sensor in Sensors_list:
         SensorResult[sensor] = {"hfreq": np.zeros(len(freq_range), dtype=complex),

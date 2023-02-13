@@ -5,14 +5,13 @@ import threading
 import time
 from multiprocessing.pool import ThreadPool
 from tkinter import filedialog
-import PassiveImagingFramework.RealNoiseFiles.GenerateNoise as GenerateNoise
 
 import pyexcel
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-import TransferMatrix.NoiseAnalysis as NoiseAnalysis
-import TransferMatrix.NormalAnalysis as NormalAnalysis
+import PassiveImagingFramework.RealNoiseFiles.GenerateNoise as GenerateNoise
+import TransferMatrix.NoiseAnalysis as NoiseAnalysisEngine
 from TransferMatrix.TMTools import *
 
 
@@ -65,7 +64,8 @@ def worker2(Pertlocation):
     global GridSize, Graph, key, Envir, freq_range, ThreadID, key_index
     Pertlocation = round_nearest2(Pertlocation, GridSize)
     NewGraph = editPipeLength(copy.deepcopy(Graph), key, Pertlocation)
-    SensorResult = NoiseAnalysis.main(NewGraph, Envir, freq_range)
+    Sensors_list = [Envir["Sensor1"], Envir["Sensor2"]]
+    SensorResult = NoiseAnalysisEngine.main(NewGraph, Envir, freq_range, Sensors_list)
     return SensorResult, Pertlocation
 
 
@@ -83,7 +83,7 @@ def worker(key_index):
     SumSensor2 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
     GridSize = wavespeed / MaxFreq
     try:
-        SubCoreCount = min(math.ceil(SimulationSize / ref_length), 5)
+        SubCoreCount = min(math.ceil(SimulationSize / ref_length), 1)
     except ZeroDivisionError:
         SubCoreCount = 1
     with mp.Pool(processes=SubCoreCount, initializer=init_worker2, initargs=(
@@ -170,47 +170,34 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     return SaveDict
 
 
-def NormalAnalysis(G, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range, timeArray1):
+def NormalAnalysis(G, Envir, freq_range, timeArray1):
     SaveDict = {}
-    result_dict, all_result_dict = NormalAnalysis.main(G, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq,
-                                                       freq_range)
-    for edge in G.edges:
-        source, target = edge
-        SensorHfreq = result_dict[edge]["hfreq"]
-        SensorQfreq = result_dict[edge]["qfreq"]
-        SourceHfreq = all_result_dict[edge]["source"]["hfreq"]
-        SourceQfreq = all_result_dict[edge]["source"]["qfreq"]
-        TargetHfreq = all_result_dict[edge]["target"]["hfreq"]
-        TargetQfreq = all_result_dict[edge]["target"]["qfreq"]
-        SensorHTime = np.real(np.fft.ifft(SensorHfreq, len(SensorHfreq)))
-        SensorQTime = np.real(np.fft.ifft(SensorQfreq, len(SensorQfreq)))
-        SourceHTime = np.real(np.fft.ifft(SourceHfreq, len(SourceHfreq)))
-        SourceQTime = np.real(np.fft.ifft(SourceQfreq, len(SourceQfreq)))
-        TargetHTime = np.real(np.fft.ifft(TargetHfreq, len(TargetHfreq)))
-        TargetQTime = np.real(np.fft.ifft(TargetQfreq, len(TargetQfreq)))
-        plt.figure("({},{}) {}".format(source, target, "Source"))
-        plt.plot(timeArray1, SourceHTime)
-        plt.figure("({},{}) {}".format(source, target, "Target"))
-        plt.plot(timeArray1, TargetHTime)
-        time_name = "Pipe {0}-{1} Time".format(source, target)
-        freq_name = "Pipe {0}-{1} Freq".format(source, target)
-        timeHeading = np.array(
-            ["Time", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor",
-             "Flow Sensor",
-             "Head Target({})".format(target), "Flow Target({})".format(target)])
-        freqHeading = np.array(
-            ["Freq", "Head Source({})".format(source), "Flow Source({})".format(source), "Head Sensor",
-             "Flow Sensor",
-             "Head Target({})".format(target), "Flow Target({})".format(target)])
-        SaveTime = np.column_stack(
-            (timeArray1, SourceHTime, SourceQTime, SensorHTime, SensorQTime, TargetHTime, TargetQTime))
-        SaveFreq = np.column_stack(
-            (freq_range, abs(SourceHfreq), abs(SourceQfreq), abs(SensorHfreq), abs(SensorQfreq), abs(TargetHfreq),
-             abs(TargetQfreq)))
-        SaveTime = np.row_stack((timeHeading, SaveTime))
-        SaveFreq = np.row_stack((freqHeading, SaveFreq))
-        SaveDict[time_name] = SaveTime.tolist()
-        SaveDict[freq_name] = SaveFreq.tolist()
+    Sensors_list = []
+    PertList = []
+    Sensor_dist_from_upstream = []
+    for edge in list(G.edges()):
+        if G.edges[edge]["HasSensor"]:
+            Sensors_list.append(G.edges[edge]["SensorLocation"])
+            PertList.append(edge)
+            if G.edges[edge]["SensorLocation"] == edge[0]:
+                Sensor_dist_from_upstream.append(0)
+            else:
+                Sensor_dist_from_upstream.append(G.edges[edge]["length"])
+    SaveTime = timeArray1
+    PossibleCaseDict = PossibleSourceLocations(G)
+    for i in range(len(Sensors_list)):
+        Pertlocation = Sensor_dist_from_upstream[i]
+        Sensor = Sensors_list[i]
+        Pertkey = PertList[i]
+        Graph, PipeLength, wavespeed = PossibleCaseDict[Pertkey]
+        NewGraph = editPipeLength(copy.deepcopy(Graph), Pertkey, Pertlocation)
+        SensorResult = NoiseAnalysisEngine.main(NewGraph, Envir, freq_range, Sensors_list)
+        HFreqResultS1 = SensorResult[Sensor]["hfreq"]
+        Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, (len(HFreqResultS1))))
+        SaveTime = np.column_stack((SaveTime, Sensor1Time))
+        plt.figure("IRF at {}".format(Sensor))
+        plt.plot(timeArray1, Sensor1Time)
+    SaveDict["Result"] = SaveTime.tolist()
     return SaveDict
 
 
@@ -230,8 +217,7 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     if Envir["FreqMode"] == "Randomized Noise":
         SaveDict = CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2, LongNoiseTimeArray)
     else:
-        SaveDict = NormalAnalysis(G, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, freq_range,
-                                  timeArray1)
+        SaveDict = NormalAnalysis(G, Envir, freq_range, timeArray1)
     pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
     ProgressPage.destroy()
     pyexcel.free_resources()

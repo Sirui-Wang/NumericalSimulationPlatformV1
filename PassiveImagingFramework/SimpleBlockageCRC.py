@@ -20,11 +20,11 @@ maxf = 1000
 print("Z1 =", Z1)
 print("Z2 =", Z2)
 
-frequencyRange = np.arange(df, maxf + df, df)
+frequencyRange = np.arange(0, maxf + df, df)
 SaveMatrix = np.zeros((7, len(frequencyRange)), dtype=complex)
 
 t = 0
-x1 = 0
+x1 = 300
 L = 150
 x2 = x1 + L
 print("x1 =", x1, ";", "x2 =", x2)
@@ -59,12 +59,12 @@ for f in tqdm(range(0, len(frequencyRange))):
     Prf1 = P[0][0]
     Ptr2 = P[3][0]
     Prf1Alt = -((Z2 - Z1) * (Z2 + Z1) * (
-                (np.exp(2 * j * x1 * (k1 + k2))) - (np.exp(2 * j * k2 * x2 + 2 * j * k1 * x1)))) / \
+            (np.exp(2 * j * x1 * (k1 + k2))) - (np.exp(2 * j * k2 * x2 + 2 * j * k1 * x1)))) / \
               ((((Z2 ** 2) - 2 * Z1 * Z2 + (Z1 ** 2)) * np.exp(2 * j * k2 * x2)) - (
-                          ((Z2 ** 2) + 2 * Z1 * Z2 + (Z1 ** 2)) * np.exp(2 * j * k2 * x1)))
+                      ((Z2 ** 2) + 2 * Z1 * Z2 + (Z1 ** 2)) * np.exp(2 * j * k2 * x1)))
     Ptr2Alt = -(4 * Z1 * Z2 * np.exp(j * k2 * (x1 + x2))) / \
               (((Z2 ** 2) - 2 * Z1 * Z2 + (Z1 ** 2)) * np.exp(2 * j * k2 * x2) - (
-                          ((Z2 ** 2) + 2 * Z1 * Z2 + (Z1 ** 2)) * np.exp(2 * j * k2 * x1)))
+                      ((Z2 ** 2) + 2 * Z1 * Z2 + (Z1 ** 2)) * np.exp(2 * j * k2 * x1)))
     R = Prf1 / Pin
     T = Ptr2 / Pin
     R1 = Prf1Alt
@@ -76,40 +76,35 @@ for f in tqdm(range(0, len(frequencyRange))):
     SaveMatrix[4][f] = T1
 
 f_seq = SaveMatrix[0][:]
-R = np.zeros(len(f_seq)+1,dtype=complex)
-T = np.zeros(len(f_seq)+1,dtype=complex)
-
+R = np.zeros(len(f_seq), dtype=complex)
+T = np.zeros(len(f_seq), dtype=complex)
 
 """Add 0 frequency value"""
-Freq = np.zeros(len(f_seq)+1, dtype=complex)
+Freq = np.zeros(len(f_seq), dtype=complex)
 R_freq = SaveMatrix[1][:]
 T_freq = SaveMatrix[2][:]
 R_freq_Alt = SaveMatrix[3][:]
 T_freq_Alt = SaveMatrix[4][:]
-R[0] = 0+ 0j
-T[0] = 1+ 0j
-Freq[0] = 0+0j
-R[1::] = R_freq
-T[1::] = T_freq
-Freq[1::] = f_seq
+R = R_freq
+T = T_freq
+Freq = f_seq
 Freq.tofile("FrequencyRange.csv", sep=",")
 R.tofile("ReflectionCoefficient.csv", sep=",")
 T.tofile("TransmissionCoefficient.csv", sep=",")
 time = np.arange(0, (1 / df) + 1 / maxf, 1 / maxf)
 
-
-# """Test and Verification"""
-# time = np.arange(0, (1 / df) + 1 / maxf, 1 / maxf)
-# R = np.real(np.fft.ifft(R, (len(R))))
-# T = np.real(np.fft.ifft(T, (len(T))))
-# F = np.real(Freq)
-# R_Alt = np.real(np.fft.ifft(R_freq_Alt, (len(R_freq_Alt))))
-# T_Alt = np.real(np.fft.ifft(T_freq_Alt, (len(T_freq_Alt))))
+"""Test and Verification"""
+time = np.arange(0, (1 / df) + 1 / maxf, 1 / maxf)
+R = np.real(np.fft.ifft(R, (len(R))))
+T = np.real(np.fft.ifft(T, (len(T))))
+F = np.real(Freq)
+R_Alt = np.real(np.fft.ifft(R_freq_Alt, (len(R_freq_Alt))))
+T_Alt = np.real(np.fft.ifft(T_freq_Alt, (len(T_freq_Alt))))
 # plt.figure("Diff")
-# plt.plot(time[:-1], R[:-1]-R_Alt)
-# plt.plot(time[:-1], T[:-1]-T_Alt)
-# plt.figure("1")
-# plt.plot(time, R, label="Reflection Coefficient")
-# plt.plot(time, T, label="Transmission Coefficient")
-# plt.legend()
-# plt.show()
+# plt.plot(time, R-R_Alt)
+# plt.plot(time, T-T_Alt)
+plt.figure("1")
+plt.plot(time, R, label="Reflection Coefficient")
+plt.plot(time, T, label="Transmission Coefficient")
+plt.legend()
+plt.show()

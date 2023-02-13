@@ -129,7 +129,7 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage, dFreq, fre
             data = (freq, branches_dict, sub_matrixes)
             Solutions = TMCalculation(data, SubProgressBar, ProgressPage)
             CalculateAtSensor(G, Solutions, i, freq, result_dict)
-            CalculateAllNode(G, Solutions, i, all_result_dict)
+            # CalculateAllNode(G, Solutions, i, all_result_dict)
     else:
         freq = np.array([float(Envir["ExcitationFreq"])])
         data = (freq, branches_dict, sub_matrixes)

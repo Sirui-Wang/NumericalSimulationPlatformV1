@@ -13,8 +13,8 @@ mDuration = 600  # Measurement lasted 10 min, 600 seconds
 
 """ Distribution Parameters """
 loc = 0
-scale = 50
-alpha = 1.95
+scale = 1
+alpha = 1.9
 beta = 0
 mTimeSequence = np.arange(0, mDuration+1/Sampling_Frequency, 1/Sampling_Frequency)
 """ Signal Generation """

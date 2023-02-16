@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 import scipy.stats as ss
 from scipy.stats import levy_stable
+from tkinter import *
+from tkinter import filedialog
+import os
 
 # """ Initialize Files"""
 # root = Tk()
@@ -35,7 +38,7 @@ fig.suptitle('RealNoise', fontsize=16)
 ax[0].plot(timeSequence, NoiseArray / max(abs(NoiseArray)))
 ax[1].hist(NoiseArray, density=True, bins=100, histtype='bar', alpha=0.5)
 """ Manually fitted levy stable PDF """
-alpha = 1.5
+alpha = 1.85
 beta = 0.1
 x = np.linspace(levy_stable.ppf(0.01, alpha, beta, loc=0, scale=0.007),
                 levy_stable.ppf(0.99, alpha, beta, loc=0, scale=0.007), 100)

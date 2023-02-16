@@ -5,8 +5,10 @@ import numpy
 import numpy as np
 import pyexcel
 from tqdm import tqdm
+
 import PassiveImagingFramework.RealNoiseFiles.GenerateNoise as GenerateNoise
 
+np.random.seed(1107)
 D = 0.3
 A = (np.pi * D ** 2) / 4
 ro = 1000
@@ -20,9 +22,9 @@ omega = 2 * np.pi * FreqRange
 k = omega / a
 PipeLength = 3100
 h1 = 300
-h2 = 150
+h2 = 300
 fault_length = 150
-L1 = -50
+L = 400
 dy = 1
 alpha = 4.49666e-5
 # blockage_alpha = 0.0018473
@@ -42,27 +44,24 @@ for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
     """Sensor 1"""
     # SgnFunction = (1 / (j * omega))
     Sensor1Direct = ((A * a * np.exp(((alpha * a + j * omega) * (h1 + y)) / a)) / 2)
-    Sensor1Scattered = ((A * R_Freq * a * np.exp(-(alpha * a + j * omega) * (h1 + 2 * L1 - y) / a)) / 2)
+    Sensor1Scattered = ((A * R_Freq * a * np.exp(-(alpha * a + j * omega) * (h1 + 2 * L - y) / a)) / 2)
     Sensor1SignalFreq = Sensor1Direct + Sensor1Scattered
     Sensor1SignalTime = np.real(np.fft.ifft(Sensor1SignalFreq, (len(Sensor1SignalFreq))))
     """Sensor 2 - Complex Conjugate"""
-    Sensor2Direct = ((-A * T_Freq[::-1] * a * np.exp((-(omega * j * (y - h2)) / a) + ((y - h2) * alpha))) / 2)
-    # Sensor2Direct_NonCongugate = np.exp(-blockage_alpha * 150) * A * T_Freq * a * np.exp(
-    #     ((y - h2) * (omega * j + alpha * a)) / a) / 2
-    Sensor2Scattered = np.zeros(len(omega), dtype=complex)
+    Sensor2Direct = ((-A * a * np.exp((h1 - y) * (omega * j - alpha * a)/a)) / 2)
+    Sensor2Scattered = -(A * R_Freq[::-1] * a * np.exp(-(h1 + y - 2 * L) * (omega * j - a * alpha) / a)) / 2
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
-    # Sensor2SignalTime_NonConjugate = np.real(np.fft.ifft(Sensor2Direct_NonCongugate, (len(Sensor2Direct_NonCongugate))))
     """Noise"""
-    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Real")
+    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Levy", [1.9, 0, 0, 1])
     CCNoise = np.correlate(Noise, Noise, mode="same")
     """Frequency domain multiplication - time domain cross correlation"""
     Y1CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
-    Y1CC_Time = np.real(np.fft.ifft(Y1CC_Freq, (len(Y1CC_Freq))))*-1
+    Y1CC_Time = np.real(np.fft.ifft(Y1CC_Freq, (len(Y1CC_Freq)))) * -1
     # print(math.ceil(len(Y1CC_Time) / 2) - 1)
     Y1CC_Time = numpy.roll(Y1CC_Time, math.ceil(len(Y1CC_Time) / 2) - 1)
     Y1CC_Time_Noise = np.convolve(Y1CC_Time, CCNoise, mode="same")
-    """Debug Verification"""
+    # """Debug Verification"""
     # plt.figure(1)
     # plt.plot(time, Sensor1SignalTime,label="sensor1")
     # plt.plot(time, Sensor2SignalTime, label="sensor2")
@@ -76,20 +75,20 @@ for y in tqdm(range(int(-PipeLength / 2), -h1, dy)):
     Pert_Sum += Y1CC_Time
     Pert_Sum_withNoise += Y1CC_Time_Noise
 """Y2, -300 ~ -50"""
-for y in tqdm(range(-h1, L1, dy)):
+for y in tqdm(range(-h1, h2, dy)):
     """Sensor 1"""
     # SgnFunction = (1 / (j * omega))
     Sensor1Direct = ((A * a * np.exp((-(h1 + y) * (omega * j + alpha * a)) / a)) / 2)
-    Sensor1Scattered = ((A * R_Freq * a * np.exp((-(h1 + 2 * L1 - y) * (omega * j + alpha * a)) / a)) / 2)
+    Sensor1Scattered = ((A * R_Freq * a * np.exp((-(h1 + 2 * L - y) * (omega * j + alpha * a)) / a)) / 2)
     Sensor1SignalFreq = Sensor1Direct + Sensor1Scattered
     Sensor1SignalTime = np.real(np.fft.ifft(Sensor1SignalFreq, (len(Sensor1SignalFreq))))
     """Sensor 2 - Complex Conjugate"""
-    Sensor2Direct = (-(A * T_Freq[::-1] * a * np.exp(((h2 - y) * (omega * j - alpha * a)) / a)) / 2)
-    Sensor2Scattered = np.zeros(len(omega), dtype=complex)
+    Sensor2Direct = (-(A * a * np.exp(((h2 - y) * (omega * j - alpha * a)) / a)) / 2)
+    Sensor2Scattered = (-(A * R_Freq[::-1] * a * np.exp(-(h2 + y - 2 * L) * (omega * j - alpha * a) / a)) / 2)
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
     """Noise"""
-    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Real")
+    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Levy", [1.9, 0, 0, 1])
     CCNoise = np.correlate(Noise, Noise, mode="same")
     """Frequency domain multiplication - time domain cross correlation"""
     Y2CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
@@ -110,19 +109,19 @@ for y in tqdm(range(-h1, L1, dy)):
     Pert_Sum += Y2CC_Time
     Pert_Sum_withNoise += Y2CC_Time_Noise
 """Y3, -50 ~ 300"""
-for y in tqdm(range(L1, h2, dy)):
+for y in tqdm(range(h2, L, dy)):
     """Sensor 1"""
-    Sensor1Direct = (A * T_Freq * a * np.exp(-((h1 + y) * (omega * j + alpha * a)) / (a))) / (2)
-    Sensor1Scattered = np.zeros(len(omega), dtype=complex)
+    Sensor1Direct = (A * a * np.exp(-((h1 + y) * (omega * j + alpha * a)) / (a))) / (2)
+    Sensor1Scattered = A * R_Freq * a * np.exp(-(h1 + 2 * L - y) * (omega * j + alpha * a) / a) / 2
     Sensor1SignalFreq = Sensor1Direct + Sensor1Scattered
     Sensor1SignalTime = np.real(np.fft.ifft(Sensor1SignalFreq, (len(Sensor1SignalFreq))))
     """Sensor 2 - Complex Conjugate"""
-    Sensor2Direct = -(A * a * np.exp((h2 - y) * (omega * j - alpha * a) / a)) / (2)
-    Sensor2Scattered = -(A * R_Freq[::-1] * a * np.exp((h2 + y - 2 * L1) * (omega * j - alpha * a) / a)) / (2)
+    Sensor2Direct = -(A * a * np.exp(-(h2 - y) * (omega * j - alpha * a) / a)) / (2)
+    Sensor2Scattered = -(A * R_Freq[::-1] * a * np.exp(-(h2 + y - 2 * L) * (omega * j - alpha * a) / a)) / (2)
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
     """Noise"""
-    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Real")
+    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Levy", [1.9, 0, 0, 1])
     CCNoise = np.correlate(Noise, Noise, mode="same")
     """Frequency domain multiplication - time domain cross correlation"""
     Y3CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
@@ -143,19 +142,19 @@ for y in tqdm(range(L1, h2, dy)):
     Pert_Sum += Y3CC_Time
     Pert_Sum_withNoise += Y3CC_Time_Noise
 """Y4, 300 ~ 1550"""
-for y in tqdm(range(h2, int(PipeLength / 2) - fault_length, dy)):
+for y in tqdm(range(L, int(PipeLength / 2) - fault_length, dy)):
     """Sensor 1"""
     Sensor1Direct = (A * T_Freq * a * np.exp(-((h1 + y) * (omega * j + alpha * a)) / (a))) / (2)
     Sensor1Scattered = np.zeros(len(omega), dtype=complex)
     Sensor1SignalFreq = Sensor1Direct + Sensor1Scattered
     Sensor1SignalTime = np.real(np.fft.ifft(Sensor1SignalFreq, (len(Sensor1SignalFreq))))
     """Sensor 2 - Complex Conjugate"""
-    Sensor2Direct = -(A * a * np.exp(-((h2 - y) * (omega * j - alpha * a)) / a)) / 2
-    Sensor2Scattered = -(A * R_Freq[::-1] * a * np.exp((h2 + y - 2 * L1) * (omega * j - alpha * a) / a)) / 2
+    Sensor2Direct = -(A * T_Freq[::-1]* a * np.exp(-((h2 - y) * (omega * j - alpha * a)) / a)) / 2
+    Sensor2Scattered = np.zeros(len(omega), dtype=complex)
     Sensor2SignalFreq = Sensor2Direct + Sensor2Scattered
     Sensor2SignalTime = np.real(np.fft.ifft(Sensor2SignalFreq, (len(Sensor2SignalFreq))))
     """Noise"""
-    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Real")
+    Noise = GenerateNoise.Gen(len(Sensor1SignalTime), "Levy", [1.9, 0, 0, 1])
     CCNoise = np.correlate(Noise, Noise, mode="same")
     """Frequency domain multiplication - time domain cross correlation"""
     Y4CC_Freq = Sensor1SignalFreq * Sensor2SignalFreq
@@ -163,7 +162,7 @@ for y in tqdm(range(h2, int(PipeLength / 2) - fault_length, dy)):
     # print(math.ceil(len(Y4CC_Time) / 2) - 1)
     Y4CC_Time = numpy.roll(Y4CC_Time, math.ceil(len(Y4CC_Time) / 2) - 1)
     Y4CC_Time_Noise = np.convolve(Y4CC_Time, CCNoise, mode="same")
-    """Debug Verification"""
+    # """Debug Verification"""
     # plt.figure(1)
     # plt.plot(time, Sensor1SignalTime,label="sensor1")
     # plt.plot(time, Sensor2SignalTime, label="sensor2")

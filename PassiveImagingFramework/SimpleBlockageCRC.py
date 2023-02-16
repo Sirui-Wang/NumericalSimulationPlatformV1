@@ -24,7 +24,7 @@ frequencyRange = np.arange(0, maxf + df, df)
 SaveMatrix = np.zeros((7, len(frequencyRange)), dtype=complex)
 
 t = 0
-x1 = 300
+x1 = 0
 L = 150
 x2 = x1 + L
 print("x1 =", x1, ";", "x2 =", x2)

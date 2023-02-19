@@ -3,7 +3,7 @@ import networkx as nx
 import MOC.MOCEngine as MOCEngine
 # import TransferMatrix.TransferMatrixEngine_NoNoise as MPTMEngine
 #
-import TransferMatrix.TransferMatrixEngine_withNoise as MPTMEngine
+import TransferMatrix.TMA_WithNoise as MPTMEngine
 
 # import TransferMatrix_SingleProcessBackUp.TransferMatrixEngine as SPTMEngine
 

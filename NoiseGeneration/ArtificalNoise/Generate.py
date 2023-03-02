@@ -7,6 +7,7 @@ from scipy import signal
 
 
 def resampled(TargetSampleRate, df=0.01, gradient=-30, alpha=1.6, beta=0, mu=0, sigma=0.007, plot=False):
+    np.random.seed(1)
     fs = TargetSampleRate
     dt = 1 / TargetSampleRate
     maxt = 1 / df
@@ -23,7 +24,7 @@ def resampled(TargetSampleRate, df=0.01, gradient=-30, alpha=1.6, beta=0, mu=0, 
     """ Generate Noise """
     freq_range = np.where(freq_range == 0, 1e-8, freq_range)  # avoid divide by zero
     filterIndex = np.where(freq_range > 0.1)[0][0]  # filter out low frequencies
-    y = gradient * np.log10(freq_range)  # convert to dB
+    y = gradient * np.log10(freq_range) + 5  # convert to dB
     y = np.where(freq_range < 0.1, y[filterIndex], y)  # filter out low frequencies
     y = np.sqrt(10 ** (y / 10))  # convert to amplitude spectrum
     sym_y = np.zeros(len(y), dtype=float)  # make symmetric
@@ -40,6 +41,7 @@ def resampled(TargetSampleRate, df=0.01, gradient=-30, alpha=1.6, beta=0, mu=0, 
     adjustedGenNoise = signal.sosfilt(sos, adjustedGenNoise)  # low pass filter
     adjustedNoiseWithNoiseFloor = adjustedGenNoise + adjustedWhiteFloorNoise
     if plot:
+        print("plot")
         fig, ax = plt.subplots(3, 1)
         fig.suptitle('GeneratedNoise', fontsize=16)
         """ plot generated Noise """
@@ -73,7 +75,7 @@ def resampled(TargetSampleRate, df=0.01, gradient=-30, alpha=1.6, beta=0, mu=0, 
 
 
 if __name__ == "__main__":
-    resampled(10000, df=8.333334e-4, gradient=-30, alpha=1.6, beta=0, mu=0, sigma=0.007,
+    resampled(10000, df=8.333334e-4, gradient=-30, alpha=1.8, beta=0, mu=0, sigma=0.007,
               plot=True)  # Compare to Real Noise
 
 #

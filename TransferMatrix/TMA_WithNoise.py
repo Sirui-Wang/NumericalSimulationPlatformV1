@@ -8,11 +8,11 @@ from tkinter import filedialog
 
 import pyexcel
 from matplotlib import pyplot as plt
+from scipy.signal import convolve
 from tqdm import tqdm
 
 import TransferMatrix.TMCoreEngine as NoiseAnalysisEngine
 # from NoiseGeneration.RealNoise import Get
-from NoiseGeneration.ArtificalNoise import Generate
 from TransferMatrix.TMTools import *
 
 
@@ -32,10 +32,6 @@ def editPipeLength(CopyG, Key, SourceLoc):
 
 
 def plotImpulseResponse(time, Sensor1, Sensor2, Title):
-    # ZeroPeak1 = np.argwhere(abs(Sensor1) < 10)
-    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 50)
-    # Sensor1[ZeroPeak1] = 0
-    # Sensor2[ZeroPeak2] = 0
     plt.figure(Title)
     plt.plot(time, Sensor1, label="Sensor1")
     plt.plot(time, Sensor2, label="Sensor2")
@@ -43,10 +39,6 @@ def plotImpulseResponse(time, Sensor1, Sensor2, Title):
 
 
 def plotCorrelation(time, Sensor1, Sensor2, Title):
-    # ZeroPeak1 = np.argwhere(abs(Sensor1) < 10)
-    # ZeroPeak2 = np.argwhere(abs(Sensor2) < 50)
-    # Sensor1[ZeroPeak1] = 0
-    # Sensor2[ZeroPeak2] = 0
     CrossCorrelation = np.correlate(Sensor1, Sensor2, mode="same")
     CCIndexese = np.argwhere(abs(CrossCorrelation) > 100000000)
     for i in CCIndexese:
@@ -73,6 +65,8 @@ def worker2(Pertlocation):
 def worker(key_index):
     global dFreq, MaxFreq, freq_range, Envir, PossibleCaseDict, SimulationSizePerMeter, Sensor1, Sensor2, timeArray1, timeArray2, ref_length
     ThreadID = threading.get_ident()
+    df = float(Envir["df"]) / 10
+    maxf = float(Envir["MaxFreq"])
     key = list(PossibleCaseDict.keys())[key_index]
     Graph, PipeLength, wavespeed = PossibleCaseDict[key]
     SimulationSize = max(int(SimulationSizePerMeter * PipeLength), 1)
@@ -80,11 +74,13 @@ def worker(key_index):
     PertLocations = np.random.uniform(0, PipeLength, SimulationSize)
     # print(PertLocations)
     # print("Current Thread ID: {}, Current Pipeline ID: {}, with Pert : {}".format(ThreadID, key, PertLocations))
-    SumSensor1 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
-    SumSensor2 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
+    # NoiseArrayLength = len(np.arange(0, maxf, df))
+    NoiseArrayLength = len(np.arange(0, 1 / df + 1 / maxf, 1 / maxf))
+    SumSensor1 = np.zeros(len(timeArray1) + NoiseArrayLength - 1)
+    SumSensor2 = np.zeros(len(timeArray1) + NoiseArrayLength - 1)
     GridSize = wavespeed / MaxFreq
     try:
-        SubCoreCount = min(math.ceil(SimulationSize / ref_length), 5)
+        SubCoreCount = min(math.ceil(SimulationSize / ref_length), 12)
     except ZeroDivisionError:
         SubCoreCount = 1
     with mp.Pool(processes=SubCoreCount, initializer=init_worker2, initargs=(
@@ -94,12 +90,13 @@ def worker(key_index):
             np.random.seed(np.int(100000 * key_index) + np.int(Pertlocation))
             HFreqResultS1 = SensorResult[Sensor1]["hfreq"]
             HFreqResultS2 = SensorResult[Sensor2]["hfreq"]
-            Noise = Generate.resampled(50 * (len(timeArray1) - 1) + 1, df=8.333334e-4, gradient=-30, alpha=1.6, beta=0,
-                                       mu=0, sigma=0.007)
+            # Noise = Generate.resampled(maxf, df=df, gradient=-30, alpha=1.6, beta=0,
+            #                            mu=0, sigma=0.007)
+            Noise = np.random.normal(0, 1, NoiseArrayLength)
             Sensor1Time = np.real(np.fft.ifft(HFreqResultS1, (len(HFreqResultS1))))
             Sensor2Time = np.real(np.fft.ifft(HFreqResultS2, (len(HFreqResultS2))))
-            Sensor1WNoise = np.convolve(Sensor1Time, Noise, mode="full")
-            Sensor2WNoise = np.convolve(Sensor2Time, Noise, mode="full")
+            Sensor1WNoise = convolve(Sensor1Time, Noise, mode="full")
+            Sensor2WNoise = convolve(Sensor2Time, Noise, mode="full")
             SumSensor1 = np.add(SumSensor1, Sensor1WNoise)
             SumSensor2 = np.add(SumSensor2, Sensor2WNoise)
             # plotCorrelation(timeArray2, Sensor1WNoise, Sensor2WNoise,
@@ -130,6 +127,7 @@ def PossibleSourceLocations(G):
 def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2, LongNoiseTimeArray):
     SaveDict = {}
     start_time = time.time()
+
     SimulationSizePerMeter = float(Envir["SimSize"])
     """Find GCD for subprocess core count"""
     length_list = []
@@ -141,8 +139,11 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     """Start MultiProcessing by start multiple processs"""
     Sensor1 = Envir["Sensor1"]
     Sensor2 = Envir["Sensor2"]
-    SumSensor1 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
-    SumSensor2 = np.zeros(len(timeArray1) + 50 * (len(timeArray1) - 1))
+    df = float(Envir["df"]) / 10
+    maxf = float(Envir["MaxFreq"])
+    NoiseArrayLength = len(np.arange(0, 1 / df + 1 / maxf, 1 / maxf))
+    SumSensor1 = np.zeros(len(timeArray1) + NoiseArrayLength - 1)
+    SumSensor2 = np.zeros(len(timeArray1) + NoiseArrayLength - 1)
     PossibleCaseDict = PossibleSourceLocations(G)
     SourceLocationRecord = {}
     CoreCount = min(len(G.edges), 12)
@@ -203,7 +204,12 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     freq_range = np.arange(0, MaxFreq + dFreq, dFreq)
     timeArray1 = np.arange(0, (1 / dFreq) + (1 / MaxFreq), (1 / MaxFreq))
     timeArray2 = np.arange(0, (1 / dFreq) * 2 + (1 / MaxFreq), 1 / MaxFreq)
-    LongNoiseTimeArray = np.arange(0, (1 / dFreq) * 51 + (1 / MaxFreq), 1 / MaxFreq)
+    df = float(Envir["df"]) / 10
+    maxf = float(Envir["MaxFreq"])
+    NoiseArrayLength = len(np.arange(0, 1 / df + 1 / maxf, 1 / maxf))
+    LongNoiseTimeArray = len(timeArray1) + NoiseArrayLength - 1
+    maxt = round(LongNoiseTimeArray * 1 / MaxFreq, 2)
+    LongNoiseTimeArray = np.arange(0, maxt + 1 / MaxFreq, 1 / MaxFreq)
     if Envir["FreqMode"] == "Randomized Noise":
         SaveDict = CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2, LongNoiseTimeArray)
     else:

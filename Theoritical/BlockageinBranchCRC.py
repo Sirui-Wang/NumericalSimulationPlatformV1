@@ -20,7 +20,7 @@ Areab2 = np.pi * Db2 ** 2
 ab2 = 1000
 Zb2 = ro * ab2 / Areab2
 
-df = 0.01
+df = 0.1
 maxf = 1000
 
 print("Z main =", Zm)
@@ -97,16 +97,16 @@ T_freq = SaveMatrix[2][:]
 R = R_freq
 T = T_freq
 Freq = f_seq
-Freq.tofile("../Data/BIBFrequencyRange.csv", sep=",")
-R.tofile("../Data/BIBReflectionCoefficient.csv", sep=",")
-T.tofile("../Data/BIBTransmissionCoefficient.csv", sep=",")
+Freq.tofile("../Data/BIBFrequencyRangeCONVENTIONAL.csv", sep=",")
+R.tofile("../Data/BIBReflectionCoefficientCONVENTIONAL.csv", sep=",")
+T.tofile("../Data/BIBTransmissionCoefficientCONVENTIONAL.csv", sep=",")
 time = np.arange(0, (1 / df) + 1 / maxf, 1 / maxf)
 
 """Test and Verification"""
 R = np.real(np.fft.ifft(R, (len(R))))
-R.tofile("../Result/BIBReflectionCoefficient.csv", sep=",")
+R.tofile("../Result/BIBReflectionCoefficientCONVENTIONAL.csv", sep=",")
 T = np.real(np.fft.ifft(T, (len(T))))
-T.tofile("../Result/BIBTransmissionCoefficient.csv", sep=",")
+T.tofile("../Result/BIBTransmissionCoefficientCONVENTIONAL.csv", sep=",")
 F = np.real(Freq)
 plt.figure("1")
 plt.plot(time, R, label="Reflection Coefficient", linewidth=3)

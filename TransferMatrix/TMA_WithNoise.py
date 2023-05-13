@@ -81,6 +81,7 @@ def worker(key_index):
     GridSize = wavespeed / MaxFreq
     try:
         SubCoreCount = min(math.ceil(SimulationSize / ref_length), 12)
+        # SubCoreCount = min(math.ceil(SimulationSize / ref_length), 1)
     except ZeroDivisionError:
         SubCoreCount = 1
     with mp.Pool(processes=SubCoreCount, initializer=init_worker2, initargs=(
@@ -126,8 +127,8 @@ def PossibleSourceLocations(G):
 
 def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2, LongNoiseTimeArray):
     SaveDict = {}
+    SaveDict2 = {}
     start_time = time.time()
-
     SimulationSizePerMeter = float(Envir["SimSize"])
     """Find GCD for subprocess core count"""
     length_list = []
@@ -162,6 +163,8 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     CorrelatedTime = LongNoiseTimeArray - np.median(LongNoiseTimeArray)
     SaveTime = np.column_stack(
         (CorrelatedTime, CrossCorrelatedResult, AutoCorrelatedResultSensor1))
+    SaveTime2 = np.column_stack(
+        (LongNoiseTimeArray, SumSensor1, SumSensor2))
     plt.figure("Cross Correlated Result from Sensor1 and Sensor2")
     plt.plot(CorrelatedTime, CrossCorrelatedResult)
     plt.figure("AutoCorrelated result from Sensor1 and Sensor2")
@@ -169,8 +172,9 @@ def CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeAr
     plt.plot(CorrelatedTime, AutoCorrelatedResultSensor2, label=Sensor2)
     plt.legend()
     SaveDict["Result"] = SaveTime.tolist()
+    SaveDict2["Result"] = SaveTime2.tolist()
     print("--- %s seconds ---" % (time.time() - start_time))
-    return SaveDict
+    return SaveDict, SaveDict2
 
 
 def NormalAnalysis(G, Envir, freq_range, timeArray1):
@@ -199,6 +203,10 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     Output_loc = filedialog.asksaveasfilename(initialdir=dirname + "/Results", initialfile="Result", title="Save File",
                                               defaultextension=".xlsx",
                                               filetypes=extensions)  # Save File
+    Output_loc2 = filedialog.asksaveasfilename(initialdir=dirname + "/RawResults", initialfile="RawResult",
+                                               title="Save File",
+                                               defaultextension=".xlsx",
+                                               filetypes=extensions)  # Save File
     dFreq = float(Envir["df"])
     MaxFreq = int(Envir["MaxFreq"])
     freq_range = np.arange(0, MaxFreq + dFreq, dFreq)
@@ -207,14 +215,18 @@ def main(Graph, Envir, SubProgressBar, MainProgressBar, ProgressPage):
     df = float(Envir["df"]) / 10
     maxf = float(Envir["MaxFreq"])
     NoiseArrayLength = len(np.arange(0, 1 / df + 1 / maxf, 1 / maxf))
-    LongNoiseTimeArray = len(timeArray1) + NoiseArrayLength - 1
-    maxt = round(LongNoiseTimeArray * 1 / MaxFreq, 2)
-    LongNoiseTimeArray = np.arange(0, maxt + 1 / MaxFreq, 1 / MaxFreq)
+    LongNoiseTimeArrayLength = len(timeArray1) + NoiseArrayLength - 1
+    LongNoiseTimeArray = np.linspace(0, LongNoiseTimeArrayLength * 1 / maxf, LongNoiseTimeArrayLength)
+    # maxt = round(LongNoiseTimeArray * 1 / MaxFreq, 2)
+    # LongNoiseTimeArray = np.arange(0, maxt + 1 / MaxFreq, 1 / MaxFreq)
+    pass
     if Envir["FreqMode"] == "Randomized Noise":
-        SaveDict = CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2, LongNoiseTimeArray)
+        SaveDict, SaveDict2 = CorrelationAnalysis(G, Envir, freq_range, dFreq, MaxFreq, timeArray1, timeArray2,
+                                                  LongNoiseTimeArray)
     else:
         SaveDict = NormalAnalysis(G, Envir, freq_range, timeArray1)
     pyexcel.isave_book_as(bookdict=SaveDict, dest_file_name=Output_loc)
+    pyexcel.isave_book_as(bookdict=SaveDict2, dest_file_name=Output_loc2)
     ProgressPage.destroy()
     pyexcel.free_resources()
     print("File Saved")
